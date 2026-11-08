@@ -1,0 +1,6 @@
+services:
+  library:
+    image: ghcr.io/akfincher/home-library:latest   # replace YOURNAME with your GitHub username
+    ports: ["8000:8000"]
+    volumes: ["./data:/data"]   # on TrueNAS, use a dataset path like /mnt/POOL/apps/home-library
+    restart: unless-stopped

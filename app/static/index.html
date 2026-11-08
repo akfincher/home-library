@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home Library</title>
+<style>
+:root{--bg:#e9eef0;--ink:#1d2a33;--mut:#5b6b75;--card:#fff;--wood:#6b4a32;--acc:#0f6b6f;--hot:#c0392b;--line:#cdd6db}
+@media(prefers-color-scheme:dark){:root{--bg:#141b20;--ink:#e6edf0;--mut:#93a3ad;--card:#1c262d;--wood:#8a6444;--acc:#2f8f94;--line:#2c3a43}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif;padding-bottom:5rem}
+h1,h2{font-family:"Iowan Old Style",Palatino,Georgia,serif;margin:0}
+header{display:flex;justify-content:space-between;align-items:center;padding:1rem 1rem .5rem;max-width:900px;margin:auto}
+nav{display:flex;gap:.5rem;padding:0 1rem;max-width:900px;margin:auto}
+main{padding:1rem;max-width:900px;margin:auto}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.5rem .9rem;cursor:pointer}
+button.p{background:var(--acc);border-color:var(--acc);color:#fff}
+nav button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin:.75rem 0}
+.list>button{display:block;width:100%;text-align:left;margin-bottom:.5rem;padding:.9rem}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:.75rem;padding:1rem .75rem 0;border-bottom:14px solid var(--wood);margin:.75rem 0 1.5rem}
+.book{cursor:pointer;font-size:.78rem;line-height:1.25;padding-bottom:.6rem}
+.book img,.ph{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:2px 4px 4px 2px;background:var(--line);box-shadow:2px 3px 6px #0004;padding:.4rem;text-align:center;font-family:Palatino,Georgia,serif;margin-bottom:.3rem}
+.hot{color:var(--hot)}
+dialog{border:0;border-radius:12px;background:var(--card);color:var(--ink);width:min(94vw,460px);padding:1.25rem}
+dialog::backdrop{background:#0008}
+label{display:block;margin:.6rem 0 .15rem;font-size:.85rem;color:var(--mut)}
+input,select,textarea{width:100%;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+input[type=checkbox]{width:auto;margin-right:.4rem}
+.fab{position:fixed;right:1rem;bottom:1rem;border-radius:99px;padding:.8rem 1.2rem;box-shadow:0 4px 12px #0005}
+</style></head><body>
+<header><h1>Home Library</h1><button id="lock" onclick="lockBtn()"></button></header>
+<nav>
+<button data-t="shelves" onclick="go('shelves')">Shelves</button>
+<button data-t="wish" onclick="go('wish')">Wish list</button>
+<button data-t="search" onclick="go('search')">Search</button>
+</nav>
+<main></main>
+<button class="p fab" onclick="openAdd()">Add book</button>
+
+<dialog id="add"><h2>Add book</h2>
+<label for="isbn">ISBN</label>
+<div class="row" style="margin:0"><input id="isbn" inputmode="numeric"><button onclick="lookup()">Look up</button></div>
+<button onclick="scan()" style="margin-top:.5rem">Scan barcode</button><div id="reader"></div>
+<label for="t">Title</label><input id="t">
+<label for="a">Author</label><input id="a">
+<label for="sh">Shelf</label><select id="sh"></select>
+<div class="row"><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveNew()">Add book</button></div>
+</dialog>
+
+<dialog id="ed"><h2 id="et"></h2>
+<label for="esh">Shelf</label><select id="esh"></select>
+<label for="er">Rating (0-5)</label><input id="er" type="number" min="0" max="5">
+<label for="es">Spicy rating (0-5)</label><input id="es" type="number" min="0" max="5">
+<label for="ev">Review</label><textarea id="ev" rows="4"></textarea>
+<label for="el">AR level</label><input id="el" type="number" step="0.1">
+<label for="ep">AR points</label><input id="ep" type="number" step="0.5">
+<label><input id="ex" type="checkbox">Restricted section</label>
+<div class="row"><button onclick="del()">Delete</button><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveEdit()">Save changes</button></div>
+</dialog>
+
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+let tab='shelves',shelf=null,sort='title',shelves=[],tok=localStorage.tok||'',cover='',editing=null,lastQ='';
+const open=()=>tok&&+tok.split('.')[0]>Date.now()/1000;
+async function api(p,o={}){
+  const r=await fetch('/api'+p,{method:o.method||'GET',headers:{'Content-Type':'application/json','X-Unlock':open()?tok:''},body:o.body?JSON.stringify(o.body):undefined});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.detail||'Something went wrong');
+  return d}
+const fail=e=>alert(e.message);
+const go=t=>{tab=t;shelf=null;render()};
+const sorted=a=>[...a].sort((x,y)=>sort==='added'?y.id-x.id:sort==='author'?x.authors.localeCompare(y.authors)||x.title.localeCompare(y.title):x.title.localeCompare(y.title));
+const opts=sel=>shelves.map(s=>`<option value="${s.id}" ${s.id==sel?'selected':''}>${esc(s.name)}</option>`).join('')+`<option value="w" ${sel==='w'?'selected':''}>Wish list</option>`;
+function card(b,showShelf){
+  const img=b.cover?`<img src="${esc(b.cover)}" alt="" loading="lazy">`:`<div class="ph">${esc(b.title)}</div>`;
+  return `<div class="book" tabindex="0" onclick="edit(${b.id})" onkeydown="if(event.key==='Enter')edit(${b.id})">${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.rating?'<br>'+'★'.repeat(b.rating):''}${b.spicy?'<br><span class="hot">'+'🌶'.repeat(b.spicy)+'</span>':''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}</div>`}
+async function render(){
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tab));
+  $('#lock').textContent=open()?'🔓 Lock restricted':'🔒 Restricted';
+  try{shelves=await api('/shelves')}catch(e){return fail(e)}
+  const m=$('main');
+  if(tab==='shelves'&&!shelf){
+    m.innerHTML=`<div class="row"><h2>Shelves</h2><button onclick="newShelf()">New shelf</button></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render()">${esc(s.name)} <small>(${s.count})</small></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
+  if(tab==='shelves'){
+    const s=shelves.find(x=>x.id===shelf);if(!s){shelf=null;return render()}
+    const bs=sorted(await api('/books?shelf_id='+shelf));
+    m.innerHTML=`<div class="row"><button onclick="shelf=null;render()">‹ Shelves</button><select aria-label="Sort" onchange="sort=this.value;render()" style="width:auto">${['title','author','added'].map(o=>`<option ${o===sort?'selected':''}>${o}</option>`).join('')}</select></div><h2>${esc(s.name)}</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>This shelf is empty. Tap Add book.</p>'}</div>${s.count?'':`<button onclick="delShelf(${s.id})">Delete shelf</button>`}`;return}
+  if(tab==='wish'){
+    const bs=sorted(await api('/books?wishlist=1'));
+    m.innerHTML=`<h2>Wish list</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>Nothing on the wish list yet.</p>'}</div>`;return}
+  m.innerHTML=`<h2>Search</h2><input id="q" aria-label="Title or author" placeholder="Title or author" oninput="find()" value="${esc(lastQ)}" style="margin-top:.75rem"><div id="res" class="shelf"></div>`;find()}
+async function find(){
+  lastQ=$('#q').value.trim();
+  const bs=lastQ?sorted(await api('/books?q='+encodeURIComponent(lastQ))):[];
+  $('#res').innerHTML=bs.map(b=>card(b,1)).join('')||`<p>${lastQ?'No matches.':'Search every shelf and the wish list.'}</p>`}
+function newShelf(){const n=prompt('Shelf name');if(n&&n.trim())api('/shelves',{method:'POST',body:{name:n}}).then(render,fail)}
+function delShelf(id){if(confirm('Delete this shelf?'))api('/shelves/'+id,{method:'DELETE'}).then(()=>{shelf=null;render()},fail)}
+function openAdd(){
+  $('#sh').innerHTML=opts(shelf||(tab==='wish'?'w':''));
+  ['isbn','t','a'].forEach(i=>$('#'+i).value='');cover='';$('#add').showModal()}
+async function lookup(){
+  try{const d=await api('/lookup/'+encodeURIComponent($('#isbn').value));$('#t').value=d.title;$('#a').value=d.authors;cover=d.cover}
+  catch(e){alert('No match found. Enter the title and author by hand.')}}
+async function scan(){
+  try{
+    if(!window.Html5Qrcode)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';s.onload=ok;s.onerror=no;document.head.append(s)});
+    const q=new Html5Qrcode('reader');
+    await q.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:120},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13]},async t=>{await q.stop();$('#reader').innerHTML='';$('#isbn').value=t;lookup()})
+  }catch(e){alert('The camera could not start. Scanning needs HTTPS and camera permission. You can type the ISBN instead.')}}
+function saveNew(){
+  const v=$('#sh').value,w=v==='w';
+  if(!$('#t').value.trim())return alert('Enter a title.');
+  if(!w&&!v)return alert('Create a shelf first, or choose Wish list.');
+  api('/books',{method:'POST',body:{isbn:$('#isbn').value,title:$('#t').value,authors:$('#a').value,cover,wishlist:w?1:0,shelf_id:w?null:+v}}).then(()=>{$('#add').close();render()},fail)}
+async function edit(id){
+  try{const b=await api('/books/'+id);editing=b;
+    $('#et').textContent=b.title;$('#esh').innerHTML=opts(b.wishlist?'w':b.shelf_id);
+    $('#er').value=b.rating;$('#es').value=b.spicy;$('#ev').value=b.review;
+    $('#el').value=b.ar_level??'';$('#ep').value=b.ar_points??'';$('#ex').checked=!!b.restricted;$('#ed').showModal()}
+  catch(e){fail(e)}}
+function saveEdit(){
+  const v=$('#esh').value,w=v==='w',n=x=>x===''?null:+x;
+  api('/books/'+editing.id,{method:'PATCH',body:{wishlist:w?1:0,shelf_id:w?null:+v,rating:+$('#er').value||0,spicy:+$('#es').value||0,review:$('#ev').value,ar_level:n($('#el').value),ar_points:n($('#ep').value),restricted:$('#ex').checked?1:0}}).then(()=>{$('#ed').close();render()},fail)}
+function del(){if(confirm('Delete this book?'))api('/books/'+editing.id,{method:'DELETE'}).then(()=>{$('#ed').close();render()},fail)}
+async function lockBtn(){
+  if(open()){tok='';localStorage.tok='';return render()}
+  try{
+    const {set}=await api('/pin-status');
+    const pin=prompt(set?'Enter your PIN to open the restricted section':'Choose a PIN (4 or more characters) for the restricted section');
+    if(!pin)return;
+    if(!set)await api('/pin',{method:'POST',body:{pin}});
+    tok=(await api('/unlock',{method:'POST',body:{pin}})).token;localStorage.tok=tok;render()
+  }catch(e){fail(e)}}
+render();
+</script></body></html>
