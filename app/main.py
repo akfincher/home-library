@@ -4,12 +4,12 @@ import os
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, config, db, security, storage
+from . import auth, changelog, config, db, security, storage
 from .routers import account, backup, books, lookup, organize, people, pin, shelves, users
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -24,6 +24,9 @@ def create_app(db_path: str | None = None) -> FastAPI:
         db.init(db_path or config.DB_PATH)
         security.reset()
         auth.reset()
+        problem = auth.create_owner_from_env()
+        if problem:
+            print(f"Home Library: {problem}", flush=True)
         yield
 
     app = FastAPI(title="Home Library", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
@@ -42,6 +45,7 @@ def create_app(db_path: str | None = None) -> FastAPI:
             if not user:
                 return JSONResponse({"detail": "Please log in."}, 401)
             request.state.user = user
+            changelog.CURRENT_USER.set(user)
         return await call_next(request)
 
     for r in (account, users, pin, people, shelves, books, lookup, backup, organize):
@@ -55,6 +59,11 @@ def create_app(db_path: str | None = None) -> FastAPI:
     @app.get("/api/about")
     def about():
         return {"license": "AGPL-3.0-or-later", "source": config.SOURCE_URL}
+
+    @app.get("/api/changes")
+    def changes(request: Request, before_id: int | None = None, x_unlock: str | None = Header(None)):
+        """The change history, newest first, 50 at a time."""
+        return changelog.entries(request.state.user["role"] == "admin", security.is_unlocked(x_unlock), before_id)
 
     @app.get("/api/storage")
     def storage_status():

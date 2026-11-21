@@ -61,7 +61,7 @@ def test_people_own_shelves_and_wish_lists(c):
     c.post("/api/shelves", json={"name": "Sam's room", "person_id": sam})
     c.post("/api/shelves", json={"name": "Hallway"})
 
-    assert {s["name"] for s in c.get(f"/api/shelves?person_id={mia}").json()} == {"Mia's room", "Hallway"}
+    assert {s["name"] for s in c.get(f"/api/shelves?person_id={mia}").json()} == {"Mia's room", "Hallway", "Main"}
 
     # A book on Mia's shelf belongs to Mia unless told otherwise.
     bid = c.post("/api/books", json={"title": "Matilda", "shelf_id": mias}).json()["id"]
@@ -79,7 +79,7 @@ def test_people_own_shelves_and_wish_lists(c):
 def test_shelf_rename(c):
     sid = c.post("/api/shelves", json={"name": "Old"}).json()["id"]
     assert c.put(f"/api/shelves/{sid}", json={"name": "New"}).status_code == 200
-    assert c.get("/api/shelves").json()[0]["name"] == "New"
+    assert [s["name"] for s in c.get("/api/shelves").json()] == ["Main", "New"]
 
 
 def test_book_patch_is_validated(c):
@@ -160,7 +160,7 @@ def test_export_and_restore_round_trip(c):
 
     c.post("/api/books", json={"title": "Added later", "wishlist": True})
     r = c.post("/api/import", json=data, headers=h)
-    assert r.json() == {"people": 1, "shelves": 1, "books": 1}
+    assert r.json() == {"people": 1, "shelves": 2, "books": 1}  # Den and the starting Main shelf
     assert [b["title"] for b in c.get("/api/books").json()] == ["Dune"]
     assert c.get("/api/books").json()[0]["person"] == "Mia"
     assert len(glob.glob(f"{db.path()}.pre-import-*.bak")) == 1

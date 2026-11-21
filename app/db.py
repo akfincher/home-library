@@ -57,6 +57,16 @@ MIGRATIONS = [
     CREATE TABLE sessions(token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires REAL NOT NULL);
     CREATE INDEX sessions_user ON sessions(user_id);
     """,
+    # 6: "not rated" (NULL) is now different from 0 stars / no spice, which used to mean the same.
+    #    A history of changes and who made them. New libraries start with a Main shelf.
+    """
+    UPDATE books SET rating=NULL WHERE rating=0;
+    UPDATE books SET spicy=NULL WHERE spicy=0;
+    CREATE TABLE changes(id INTEGER PRIMARY KEY, at REAL NOT NULL, user_id INTEGER, username TEXT NOT NULL DEFAULT '',
+      summary TEXT NOT NULL, book_id INTEGER, restricted INTEGER NOT NULL DEFAULT 0, admin INTEGER NOT NULL DEFAULT 0);
+    CREATE INDEX changes_at ON changes(at);
+    INSERT INTO shelves(name) SELECT 'Main' WHERE NOT EXISTS (SELECT 1 FROM shelves);
+    """,
 ]
 
 

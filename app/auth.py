@@ -124,6 +124,23 @@ def user_for(token: str | None) -> dict | None:
     return row
 
 
+def create_owner_from_env() -> str | None:
+    """On a library with no accounts yet, creates the owner account from the
+    OWNER_USERNAME and OWNER_PASSWORD settings in the deployment, so the app is
+    never left open for a stranger to claim. Returns a problem to report, if any."""
+    import os
+    name, password = os.environ.get("OWNER_USERNAME", "").strip(), os.environ.get("OWNER_PASSWORD", "")
+    if not (name or password) or has_users():
+        return None
+    try:
+        name = clean_username(name)
+        validate_password(password)
+    except HTTPException as e:
+        return f"OWNER_USERNAME / OWNER_PASSWORD not used: {e.detail}"
+    db.run("INSERT INTO users(username, password, role) VALUES(?,?,'admin')", (name, hash_password(password)))
+    return None
+
+
 def set_cookie(response, request: Request, token: str) -> None:
     response.set_cookie(COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True, samesite="lax",
                         secure=request.url.scheme == "https", path="/")

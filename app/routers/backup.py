@@ -15,11 +15,13 @@ from starlette.background import BackgroundTask
 
 from .. import db
 from .. import auth
+from ..changelog import log
 from ..security import require_admin
 
 router = APIRouter(prefix="/api", dependencies=[Depends(auth.require_owner), Depends(require_admin)])
 
-EXPORT_VERSION = 1
+# 2: rating/spicy 0 is a real rating and null means not rated. In version 1, 0 meant not rated.
+EXPORT_VERSION = 2
 COLUMNS = {
     "people": ["id", "name"],
     "shelves": ["id", "name", "person_id", "sort"],
@@ -70,7 +72,7 @@ def backup_db():
 def import_json(data: dict):
     """Replaces everything with the contents of a JSON export. A copy of the
     current database is saved next to it first."""
-    if data.get("app") != "home-library" or data.get("version") != EXPORT_VERSION:
+    if data.get("app") != "home-library" or data.get("version") not in (1, EXPORT_VERSION):
         raise HTTPException(400, "That file isn't a Home Library backup this version can read.")
     for table in COLUMNS:
         if not isinstance(data.get(table), list) or not all(isinstance(r, dict) for r in data[table]):
@@ -82,6 +84,8 @@ def import_json(data: dict):
                 c.execute(f"DELETE FROM {table}")
             for table, cols in COLUMNS.items():
                 for r in data[table]:
+                    if table == "books" and data["version"] == 1:
+                        r = {**r, **{k: None for k in ("rating", "spicy") if not r.get(k)}}
                     # Only the columns the file has, so backups from older versions get the defaults.
                     keys = [k for k in cols if k in r]
                     c.execute(f"INSERT INTO {table}({', '.join(keys)}) VALUES({', '.join('?' * len(keys))})",
@@ -90,4 +94,5 @@ def import_json(data: dict):
         raise HTTPException(400, f"The backup couldn't be restored, so nothing was changed: {e}")
     # Accounts aren't in backups; unlink any from people that no longer exist.
     db.run("UPDATE users SET person_id=NULL WHERE person_id NOT IN (SELECT id FROM people)")
+    log(f"Restored a backup ({len(data['books'])} books, {len(data['shelves'])} shelves)")
     return {table: len(data[table]) for table in COLUMNS}

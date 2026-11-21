@@ -133,7 +133,7 @@ def test_apply_moves_books_and_reuses_shelves(c):
     old = library(c)
     fantasy = shelf(c, "Fantasy")
     r = c.post("/api/organize/apply", json={"rule": "genre", "min_size": 2}).json()
-    assert r == {"moved": 6, "shelves": 3, "empty_shelves": 1}
+    assert r == {"moved": 6, "shelves": 3, "empty_shelves": 2}  # Boxes and the starting Main shelf
     names = {s["name"]: s for s in c.get("/api/shelves").json()}
     assert names["Fantasy"]["id"] == fantasy and names["Fantasy"]["count"] == 2
     assert names["Science fiction"]["sort"] == "author"
@@ -143,7 +143,7 @@ def test_apply_moves_books_and_reuses_shelves(c):
 
     # Doing it again changes nothing.
     assert c.post("/api/organize/preview", json={"rule": "genre", "min_size": 2}).json()["moves"] == 0
-    assert c.post("/api/shelves/delete-empty").json() == {"deleted": 1}
+    assert c.post("/api/shelves/delete-empty").json() == {"deleted": 2}
     assert all(s["id"] != old for s in c.get("/api/shelves").json())
 
 

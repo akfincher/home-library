@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import auth, db, metadata
+from ..changelog import log
 from ..security import require_admin
 
 router = APIRouter(prefix="/api")
@@ -47,8 +48,10 @@ def set_key(source: str, b: Key):
         raise HTTPException(404, "That source doesn't take a key")
     setting = metadata.KEYED[source].setting
     key = b.key.strip()
+    name = metadata.KEYED[source].name
     if not key:
         db.delete_setting(setting)
+        log(f"Removed the {name} key", admin=True)
         return {"ok": True}
     try:
         metadata.check_key(source, key)
@@ -57,4 +60,5 @@ def set_key(source: str, b: Key):
     except ConnectionError as e:
         raise HTTPException(502, str(e))
     db.put_setting(setting, key)
+    log(f"Saved a {name} key", admin=True)
     return {"ok": True}

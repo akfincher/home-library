@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from .. import auth, db
+from ..changelog import log, q
 from ..schemas import ShelfIn, ShelfOrder, ShelfSort
 from ..security import require_admin, unlocked
 from .people import ensure_person
@@ -12,15 +13,17 @@ router = APIRouter(prefix="/api/shelves")
 
 @router.get("")
 def shelves(person_id: int | None = None, is_unlocked: bool = Depends(unlocked)):
-    """With person_id, returns that person's shelves plus the shared ones."""
+    """With person_id, returns that person's shelves plus the shared ones, counting
+    only the books they'd see: theirs and ones that belong to nobody in particular."""
     hide = "" if is_unlocked else " AND b.restricted=0"
+    mine = " AND (b.person_id=? OR b.person_id IS NULL)" if person_id is not None else ""
     sql = ("SELECT s.id, s.name, s.person_id, s.sort, p.name AS person, COUNT(b.id) AS count FROM shelves s "
            "LEFT JOIN people p ON p.id=s.person_id "
-           f"LEFT JOIN books b ON b.shelf_id=s.id{hide}")
+           f"LEFT JOIN books b ON b.shelf_id=s.id{hide}{mine}")
     args = []
     if person_id is not None:
         sql += " WHERE s.person_id=? OR s.person_id IS NULL"
-        args.append(person_id)
+        args += [person_id, person_id]
     return db.rows(sql + " GROUP BY s.id ORDER BY s.name COLLATE NOCASE", args)
 
 
@@ -35,22 +38,36 @@ def _clean(b: ShelfIn) -> str:
 @router.post("")
 def add_shelf(b: ShelfIn):
     name = _clean(b)
-    return {"id": db.run("INSERT INTO shelves(name, person_id) VALUES(?,?)", (name, b.person_id)).lastrowid}
+    sid = db.run("INSERT INTO shelves(name, person_id) VALUES(?,?)", (name, b.person_id)).lastrowid
+    log(f"Created shelf {q(name)}")
+    return {"id": sid}
 
 
 @router.put("/{sid}")
 def update_shelf(sid: int, b: ShelfIn):
     name = _clean(b)
-    if not db.run("UPDATE shelves SET name=?, person_id=? WHERE id=?", (name, b.person_id, sid)).rowcount:
+    old = db.one("SELECT * FROM shelves WHERE id=?", (sid,))
+    if not old:
         raise HTTPException(404, "Shelf not found")
+    db.run("UPDATE shelves SET name=?, person_id=? WHERE id=?", (name, b.person_id, sid))
+    if old["name"] != name:
+        log(f"Renamed shelf {q(old['name'])} to {q(name)}")
+    if old["person_id"] != b.person_id:
+        who = db.one("SELECT name FROM people WHERE id=?", (b.person_id,)) if b.person_id else None
+        log(f"Gave shelf {q(name)} to {who['name'] if who else 'everyone (shared)'}")
     return {"ok": True}
 
 
 @router.put("/{sid}/sort")
 def set_sort(sid: int, b: ShelfSort):
     """Remembers how this shelf is sorted, for everyone who opens it."""
-    if not db.run("UPDATE shelves SET sort=? WHERE id=?", (b.sort, sid)).rowcount:
+    old = db.one("SELECT * FROM shelves WHERE id=?", (sid,))
+    if not old:
         raise HTTPException(404, "Shelf not found")
+    db.run("UPDATE shelves SET sort=? WHERE id=?", (b.sort, sid))
+    if old["sort"] != b.sort:
+        how = {"custom": "my order", "added": "newest"}.get(b.sort, b.sort)
+        log(f"Sorted shelf {q(old['name'])} by {how}")
     return {"ok": True}
 
 
@@ -66,6 +83,7 @@ def set_order(sid: int, b: ShelfOrder):
             raise HTTPException(400, "Those books aren't all on this shelf. Reload and try again.")
         c.executemany("UPDATE books SET position=? WHERE id=?", [(i + 1, bid) for i, bid in enumerate(b.book_ids)])
         c.execute("UPDATE shelves SET sort='custom' WHERE id=?", (sid,))
+    log(f"Arranged shelf {q(db.one('SELECT name FROM shelves WHERE id=?', (sid,))['name'])} to match the real shelf")
     return {"ok": True}
 
 
@@ -76,8 +94,11 @@ def delete_shelf(sid: int):
     with db.connect() as c:
         if c.execute("SELECT 1 FROM books WHERE shelf_id=?", (sid,)).fetchone():
             raise HTTPException(400, "Move or delete the books on this shelf first")
-        if not c.execute("DELETE FROM shelves WHERE id=?", (sid,)).rowcount:
+        old = c.execute("SELECT name FROM shelves WHERE id=?", (sid,)).fetchone()
+        if not old:
             raise HTTPException(404, "Shelf not found")
+        c.execute("DELETE FROM shelves WHERE id=?", (sid,))
+    log(f"Deleted shelf {q(old[0])}")
     return {"ok": True}
 
 
@@ -85,4 +106,6 @@ def delete_shelf(sid: int):
 def delete_empty():
     """Removes every shelf with no books at all on it (restricted ones included)."""
     cur = db.run("DELETE FROM shelves WHERE id NOT IN (SELECT shelf_id FROM books WHERE shelf_id IS NOT NULL)")
+    if cur.rowcount:
+        log(f"Deleted {cur.rowcount} empty shel{'f' if cur.rowcount == 1 else 'ves'}")
     return {"deleted": cur.rowcount}

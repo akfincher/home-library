@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from .. import auth, db
+from ..changelog import log
 
 router = APIRouter(prefix="/api/auth")
 
@@ -67,4 +68,5 @@ def change_password(b: NewPassword, request: Request, user: dict = Depends(auth.
     auth.validate_password(b.password)
     db.run("UPDATE users SET password=? WHERE id=?", (auth.hash_password(b.password), user["id"]))
     auth.end_all_sessions(user["id"], except_token=request.cookies.get(auth.COOKIE))
+    log("Changed their own password", admin=True)
     return {"ok": True}

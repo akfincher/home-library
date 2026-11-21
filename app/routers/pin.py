@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from .. import auth, config, security
+from ..changelog import log
 from ..schemas import Pin
 
 router = APIRouter(prefix="/api")
@@ -25,11 +26,13 @@ def _verify(pin: str) -> None:
 def set_pin(b: Pin):
     """Set the first PIN, or change it (needs the current one). Returns a fresh
     unlock token, because changing the PIN logs out every open session."""
-    if security.pin_is_set():
+    had_pin = security.pin_is_set()
+    if had_pin:
         _verify(b.current)
     if len(b.pin) < 4:
         raise HTTPException(400, "Use at least 4 characters")
     security.save_pin(b.pin)
+    log(f"{'Changed' if had_pin else 'Set'} the restricted-section PIN", admin=True)
     return {"token": security.make_token()}
 
 

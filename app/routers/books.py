@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from .. import db, metadata, security
+from ..changelog import log, q
 from ..schemas import BookIn, BookPatch
 from ..security import unlocked
 from .people import ensure_person
@@ -17,6 +18,17 @@ TEXT = {"title", "authors", "isbn", "cover", "review", "subtitle", "description"
 FILLABLE = ["subtitle", "authors", "cover", "description", "publisher", "published", "pages", "subjects",
             "language"]
 SEARCHED = ["title", "subtitle", "authors", "isbn", "series", "subjects", "publisher"]
+# How changed fields are named in the change history.
+LABELS = {"authors": "author", "spicy": "spice rating", "ar_level": "AR level", "ar_points": "AR points",
+          "person_id": "whose book", "series_index": "number in series", "restricted": "restricted section",
+          "isbn": "ISBN"}
+
+
+def _where(book_shelf_id, wishlist) -> str:
+    if wishlist:
+        return "the wish list"
+    s = db.one("SELECT name FROM shelves WHERE id=?", (book_shelf_id,)) if book_shelf_id else None
+    return q(s["name"]) if s else "no shelf"
 
 
 def _visible(bid: int, is_unlocked: bool) -> dict:
@@ -45,7 +57,10 @@ def _shelf(sid: int | None) -> dict | None:
 
 @router.get("")
 def books(shelf_id: int | None = None, wishlist: bool | None = None, person_id: int | None = None,
-          q: str = "", is_unlocked: bool = Depends(unlocked)):
+          shared: bool = False, q: str = "", is_unlocked: bool = Depends(unlocked)):
+    """With person_id, only that person's books; add shared=true to include
+    books that belong to nobody in particular."""
+    words = q
     sql, args = SELECT + " WHERE 1=1", []
     if shelf_id is not None:
         sql += " AND b.shelf_id=?"
@@ -54,10 +69,10 @@ def books(shelf_id: int | None = None, wishlist: bool | None = None, person_id: 
         sql += " AND b.wishlist=?"
         args.append(int(wishlist))
     if person_id is not None:
-        sql += " AND b.person_id=?"
+        sql += " AND (b.person_id=? OR b.person_id IS NULL)" if shared else " AND b.person_id=?"
         args.append(person_id)
     # Every word has to appear somewhere in the book's details, in any order.
-    for word in q.split()[:8]:
+    for word in words.split()[:8]:
         sql += " AND (" + " OR ".join(f"b.{c} LIKE ?" for c in SEARCHED) + ")"
         args += [f"%{word}%"] * len(SEARCHED)
     if not is_unlocked:
@@ -74,8 +89,11 @@ def add_book(b: BookIn):
                 shelf_id=shelf["id"] if shelf else None,
                 # A book added to someone's shelf belongs to them unless told otherwise.
                 person_id=b.person_id if b.person_id is not None else (shelf or {}).get("person_id"),
-                position=_end_of(shelf["id"] if shelf else None))
+                position=_end_of(shelf["id"] if shelf else None),
+                # Not rated yet (0 stars and "no spice" are real ratings, set by hand).
+                rating=None, spicy=None)
     cur = db.run(f"INSERT INTO books({', '.join(data)}) VALUES({', '.join('?' * len(data))})", list(data.values()))
+    log(f"Added {q(data['title'])} to {_where(data['shelf_id'], data['wishlist'])}", {"id": cur.lastrowid})
     return {"id": cur.lastrowid}
 
 
@@ -105,15 +123,26 @@ def patch_book(bid: int, body: BookPatch, is_unlocked: bool = Depends(unlocked))
             sets[k] = int(v)
         elif k in TEXT:
             sets[k] = (v or "").strip()
+    changed = [k for k, v in sets.items() if k != "position" and book.get(k) != v]
     if sets:
         db.run(f"UPDATE books SET {', '.join(k + '=?' for k in sets)} WHERE id=?", [*sets.values(), bid])
+    if changed:
+        title = q(sets.get("title") or book["title"])
+        hidden = bool(book["restricted"] or sets.get("restricted"))
+        if "shelf_id" in changed or "wishlist" in changed:
+            log(f"Moved {title} to {_where(sets.get('shelf_id', book['shelf_id']), sets.get('wishlist', book['wishlist']))}",
+                book, restricted=hidden)
+        rest = [LABELS.get(k, k.replace("_", " ")) for k in changed if k not in ("shelf_id", "wishlist")]
+        if rest:
+            log(f"Edited {title}: {', '.join(rest)}", book, restricted=hidden)
     return {"ok": True}
 
 
 @router.delete("/{bid}")
 def delete_book(bid: int, is_unlocked: bool = Depends(unlocked)):
-    _visible(bid, is_unlocked)
+    book = _visible(bid, is_unlocked)
     db.run("DELETE FROM books WHERE id=?", (bid,))
+    log(f"Deleted {q(book['title'])}", book)
     return {"ok": True}
 
 
@@ -126,6 +155,7 @@ def _fill(book: dict) -> list[str]:
     sets = {k: found[k] for k in FILLABLE if found.get(k) and not book.get(k)}
     if sets:
         db.run(f"UPDATE books SET {', '.join(k + '=?' for k in sets)} WHERE id=?", [*sets.values(), book["id"]])
+        log(f"Filled in details for {q(book['title'])}: {', '.join(LABELS.get(k, k) for k in sets)}", book)
     return list(sets)
 
 

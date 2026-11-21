@@ -9,6 +9,7 @@ from collections import Counter
 from fastapi import APIRouter, Depends
 
 from .. import auth, db
+from ..changelog import log
 from ..schemas import OrganizeIn
 from ..security import require_admin, unlocked
 from .people import ensure_person
@@ -38,9 +39,17 @@ def _surname(authors: str) -> str:
     return words[-1] if words else ""
 
 
+ARTICLE = re.compile(r"^(the|a|an)\s+", re.I)
+
+
+def sort_title(title: str) -> str:
+    """'The Hunger Games' sorts as 'hunger games', under H."""
+    return ARTICLE.sub("", (title or "").strip()).lower()
+
+
 def _sort_key(sort: str):
     def key(b):
-        title = (b["title"] or "").lower()
+        title = sort_title(b["title"])
         if sort == "author":
             return (_surname(b["authors"]).lower(), (b["authors"] or "").lower(), title)
         if sort == "series":
@@ -141,4 +150,8 @@ def apply(o: OrganizeIn, is_unlocked: bool = Depends(unlocked)):
                 c.execute("UPDATE books SET shelf_id=?, position=? WHERE id=?", (sid, start + i + 1, b["id"]))
         empty = c.execute("SELECT COUNT(*) FROM shelves WHERE id NOT IN "
                           "(SELECT shelf_id FROM books WHERE shelf_id IS NOT NULL)").fetchone()[0]
+    how = {"genre": "genre", "author": "author", "series": "series", "level": "reading level", "person": "whose book it is"}
+    who = db.one("SELECT name FROM people WHERE id=?", (o.person_id,)) if o.person_id else None
+    log(f"Organized {who['name'] + chr(39) + 's books' if who else 'the library'} by {how[o.rule]}: "
+        f"{moved} book{'' if moved == 1 else 's'} moved onto {len(groups)} shel{'f' if len(groups) == 1 else 'ves'}")
     return {"moved": moved, "shelves": len(groups), "empty_shelves": empty}

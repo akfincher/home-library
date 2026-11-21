@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import auth, db
+from ..changelog import log
 from .people import ensure_person
 
 router = APIRouter(prefix="/api/users", dependencies=[Depends(auth.require_owner)])
@@ -46,6 +47,7 @@ def add_user(b: NewUser):
                      (username, auth.hash_password(b.password), b.role, b.person_id)).lastrowid
     except sqlite3.IntegrityError:
         raise HTTPException(400, "That username is already taken.")
+    log(f"Added the {'owner' if b.role == 'admin' else 'member'} account {username}", admin=True)
     return {"id": uid}
 
 
@@ -53,7 +55,8 @@ def add_user(b: NewUser):
 def update_user(uid: int, b: UserPatch):
     """Change someone's role or linked person, or set them a new password
     (which logs them out everywhere)."""
-    if not db.one("SELECT 1 FROM users WHERE id=?", (uid,)):
+    old = db.one("SELECT * FROM users WHERE id=?", (uid,))
+    if not old:
         raise HTTPException(404, "Account not found")
     sets = b.model_dump(exclude_unset=True)
     if sets.get("role") == "member" and not _owners_left_without(uid):
@@ -70,6 +73,11 @@ def update_user(uid: int, b: UserPatch):
         sets.pop("role")
     if sets:
         db.run(f"UPDATE users SET {', '.join(k + '=?' for k in sets)} WHERE id=?", [*sets.values(), uid])
+    what = [w for k, w in (("role", "account type"), ("person_id", "linked person")) if k in sets and sets[k] != old[k]]
+    if "password" in sets:
+        what.append("password")
+    if what:
+        log(f"Changed {old['username']}'s {' and '.join(what)}", admin=True)
     return {"ok": True}
 
 
@@ -79,7 +87,10 @@ def delete_user(uid: int, me: dict = Depends(auth.current_user)):
         raise HTTPException(400, "You can't remove your own account.")
     if not _owners_left_without(uid) and db.one("SELECT 1 FROM users WHERE id=? AND role='admin'", (uid,)):
         raise HTTPException(400, "The library needs at least one owner account.")
-    auth.end_all_sessions(uid)
-    if not db.run("DELETE FROM users WHERE id=?", (uid,)).rowcount:
+    old = db.one("SELECT username FROM users WHERE id=?", (uid,))
+    if not old:
         raise HTTPException(404, "Account not found")
+    auth.end_all_sessions(uid)
+    db.run("DELETE FROM users WHERE id=?", (uid,))
+    log(f"Removed the account {old['username']}", admin=True)
     return {"ok": True}

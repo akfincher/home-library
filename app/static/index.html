@@ -57,9 +57,6 @@ label.check{display:flex;align-items:center;min-height:44px;font-size:1rem;color
 input,select,textarea{width:100%;padding:.6rem;border:1px solid var(--line);border-radius:8px;background:var(--bg);min-height:44px}
 input[type=checkbox]{width:1.3rem;height:1.3rem;min-height:0;margin:0 .6rem 0 0}
 input[type=file]{padding:.5rem}
-.rate{display:flex;gap:.1rem}
-.rate button{font-size:1.6rem;line-height:1;min-width:44px;padding:0;background:none;border:0;filter:grayscale(1);opacity:.35}
-.rate button.on{filter:none;opacity:1}
 .star.on{color:#e0a100}
 .fab{position:fixed;right:1rem;bottom:calc(1rem + var(--sb));border-radius:99px;padding:.8rem 1.3rem;box-shadow:0 4px 12px #0005;z-index:4}
 #reader video{border-radius:8px}
@@ -128,9 +125,10 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <div id="toast" role="status" aria-live="polite"></div>
 
 <dialog id="add" aria-labelledby="addT"><h2 id="addT">Add book</h2>
-<button class="p wide" onclick="scan()" style="margin-top:1rem">📷 Scan barcode</button><div id="reader" style="margin-top:.5rem"></div>
+<button class="p wide" onclick="scan()" style="margin-top:1rem">📷 Scan barcode</button>
+<button class="wide" onclick="openBulk()" style="margin-top:.5rem">📚 Add several books in a row</button><div id="reader" style="margin-top:.5rem"></div>
 <label for="isbn">Or type an ISBN, or a title and author</label>
-<div class="row" style="margin:0"><input id="isbn" type="search" enterkeyhint="search" autocomplete="off" onkeydown="if(event.key==='Enter')findBook()"><button onclick="findBook()">Find</button></div>
+<div class="row" style="margin:0"><input id="isbn" type="search" enterkeyhint="search" autocomplete="off" oninput="autoFind()" onkeydown="if(event.key==='Enter')findBook()"><button onclick="findBook()">Find</button></div>
 <div id="results" class="results"></div><div id="preview"></div>
 <label for="t">Title</label><input id="t" autocapitalize="words" enterkeyhint="next">
 <label for="a">Author</label><input id="a" autocapitalize="words" enterkeyhint="next">
@@ -141,12 +139,12 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 
 <dialog id="ed" aria-label="Book"><div id="einfo"></div>
 <div class="two"><div><label for="esh">Shelf</label><select id="esh"></select></div><div><label for="epp">Whose book</label><select id="epp"></select></div></div>
-<label id="erL">Rating</label><div class="rate" id="er" role="group" aria-labelledby="erL"></div>
-<label id="esL">Spicy rating</label><div class="rate" id="es" role="group" aria-labelledby="esL"></div>
 <label for="ev">Review</label><textarea id="ev" rows="4"></textarea>
 <div class="two"><div><label for="el">AR level</label><input id="el" type="number" inputmode="decimal" step="0.1" min="0"></div><div><label for="ep">AR points</label><input id="ep" type="number" inputmode="decimal" step="0.5" min="0"></div></div>
 <label class="check"><input id="ex" type="checkbox">Restricted section</label>
 <details id="edet"><summary>Edit book details</summary>
+<div class="two"><div><label for="drt">Rating</label><select id="drt"><option value="">Not rated</option><option value="0">0 stars</option><option value="1">★</option><option value="2">★★</option><option value="3">★★★</option><option value="4">★★★★</option><option value="5">★★★★★</option></select></div>
+<div><label for="dsp">Spice</label><select id="dsp"><option value="">Not rated</option><option value="0">No spice</option><option value="1">🌶</option><option value="2">🌶🌶</option><option value="3">🌶🌶🌶</option><option value="4">🌶🌶🌶🌶</option><option value="5">🌶🌶🌶🌶🌶</option></select></div></div>
 <label for="dt">Title</label><input id="dt" autocapitalize="words">
 <label for="dst">Subtitle</label><input id="dst">
 <label for="da">Author</label><input id="da" autocapitalize="words">
@@ -165,6 +163,18 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <label for="sn">Name</label><input id="sn" autocapitalize="words" enterkeyhint="done">
 <label for="so">Belongs to</label><select id="so"></select>
 <div class="row acts"><button id="sdx" class="danger" onclick="delShelf()">Delete</button><span style="flex:1"></span><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveShelf()">Save</button></div>
+</dialog>
+
+<dialog id="bulk" aria-labelledby="bulkT"><h2 id="bulkT">Add several books</h2>
+<p class="mut">Choose where they go, then scan one book after another. Each one is looked up and added straight away, and the camera stays on for the next.</p>
+<div class="two"><div><label for="bsh">Shelf</label><select id="bsh"></select></div><div><label for="bap">Whose books</label><select id="bap"></select></div></div>
+<button class="p wide" id="bcam" onclick="bulkCamera()" style="margin-top:1rem">📷 Start camera</button>
+<div id="breader" style="margin-top:.5rem"></div>
+<label for="bisbn">Or type an ISBN (a barcode scanner works too)</label>
+<input id="bisbn" inputmode="numeric" enterkeyhint="go" autocomplete="off" oninput="bulkAuto()" onkeydown="if(event.key==='Enter')bulkAdd(this.value)">
+<p id="bcount" class="mut" role="status" aria-live="polite"></p>
+<ul id="blist" class="groups"></ul>
+<div class="row acts"><span></span><button class="p" onclick="this.closest('dialog').close()">Done</button></div>
 </dialog>
 
 <dialog id="org" aria-labelledby="orgT"><h2 id="orgT">Organize shelves</h2>
@@ -215,7 +225,8 @@ function ask({title,label,value='',pin=false,password=false,ok='OK'}){
 const go=t=>{tab=t;shelf=null;arranging=false;render();scrollTo(0,0)};
 const pq=(pre='?')=>person?pre+'person_id='+person:'';
 const setPerson=v=>{person=v;store.set('person',v);shelf=null;render()};
-const byTitle=(x,y)=>x.title.localeCompare(y.title);
+const sortTitle=t=>(t||'').trim().replace(/^(the|a|an)\s+/i,'');
+const byTitle=(x,y)=>sortTitle(x.title).localeCompare(sortTitle(y.title),undefined,{sensitivity:'base',numeric:true});
 const SORTS={title:byTitle,author:(x,y)=>x.authors.localeCompare(y.authors)||byTitle(x,y),
   series:(x,y)=>(!x.series)-(!y.series)||x.series.localeCompare(y.series)||(x.series_index??0)-(y.series_index??0)||byTitle(x,y),
   added:(x,y)=>y.id-x.id,
@@ -230,15 +241,13 @@ const opts=sel=>shelves.map(s=>`<option value="${s.id}" ${s.id==sel?'selected':'
 const personOpts=(sel,none)=>`<option value="">${none}</option>`+people.map(p=>`<option value="${p.id}" ${p.id==sel?'selected':''}>${esc(p.name)}</option>`).join('');
 const num=v=>v===''?null:+v;
 
-/* Tap-to-rate: tapping the current value again clears it. */
-function setRate(id,v){const el=$('#'+id);el.dataset.v=v;el.querySelectorAll('button').forEach((b,i)=>{b.classList.toggle('on',i<v);b.setAttribute('aria-pressed',i<v)})}
-function makeRate(id,sym,cls,noun){$('#'+id).innerHTML=[1,2,3,4,5].map(n=>`<button type="button" class="${cls}" aria-label="${n} ${noun}${n>1?'s':''}" onclick="setRate('${id}',${n}==$('#${id}').dataset.v?0:${n})">${sym}</button>`).join('')}
-makeRate('er','★','star','star');makeRate('es','🌶','','pepper');
+const stars=b=>b.rating==null?'':b.rating?`<span class="star on" aria-label="${b.rating} star${b.rating>1?'s':''}">${'★'.repeat(b.rating)}</span>`:'<span class="mut">0 stars</span>';
+const spice=b=>b.spicy==null?'':b.spicy?`<span class="hot" aria-label="spice ${b.spicy}">${'🌶'.repeat(b.spicy)}</span>`:'<span class="mut">No spice</span>';
 
 function card(b,showShelf){
   const img=b.cover?`<img src="${esc(b.cover)}" alt="" loading="lazy">`:`<div class="ph">${esc(b.title)}</div>`;
   const mv=arranging?`<span class="mv"><button type="button" aria-label="Move ${esc(b.title)} left" onclick="moveCard(this,-1)">◀</button><button type="button" aria-label="Move ${esc(b.title)} right" onclick="moveCard(this,1)">▶</button></span>`:'';
-  return `<div class="book" data-id="${b.id}" role="button" tabindex="0" onclick="if(!arranging)edit(${b.id})" onkeydown="if(event.key==='Enter'&&!arranging)edit(${b.id})">${mv}${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.series?'<br><span class="mut">'+esc(seriesText(b))+'</span>':''}${b.rating?'<br><span class="star on">'+'★'.repeat(b.rating)+'</span>':''}${b.spicy?'<br><span class="hot">'+'🌶'.repeat(b.spicy)+'</span>':''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}</div>`}
+  return `<div class="book" data-id="${b.id}" role="button" tabindex="0" onclick="if(!arranging)edit(${b.id})" onkeydown="if(event.key==='Enter'&&!arranging)edit(${b.id})">${mv}${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.series?'<br><span class="mut">'+esc(seriesText(b))+'</span>':''}${stars(b)?'<br>'+stars(b):''}${spice(b)?'<br>'+spice(b):''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}</div>`}
 async function render(){
   document.body.classList.toggle('is-arranging',arranging);
   document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tab));
@@ -254,7 +263,7 @@ async function render(){
     m.innerHTML=`<div class="row"><h2>Shelves</h2><span style="display:flex;gap:.5rem">${isOwner()?'<button onclick="openOrganize()">Organize</button>':''}<button onclick="openShelf()">New shelf</button></span></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render();scrollTo(0,0)"><span>${esc(s.name)} <small class="mut">(${s.count})</small>${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</span></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
   if(tab==='shelves'){
     const s=shelves.find(x=>x.id===shelf);if(!s){shelf=null;return render()}
-    const bs=sorted(await api('/books?shelf_id='+shelf),s.sort);
+    const bs=sorted(await api('/books?shelf_id='+shelf+pq('&')+(person?'&shared=true':'')),s.sort);
     const head=arranging
       ?`<div class="arrbar"><button onclick="arranging=false;render()">Cancel</button><button class="p" onclick="saveOrder(${s.id})">Done</button></div><p class="note tip">Drag the books into the same order as your real shelf, left to right, then tap Done. You can also use the arrows.</p>`
       :`<div class="row"><button onclick="shelf=null;render()">‹ Shelves</button><span style="display:flex;gap:.5rem"><select aria-label="Sort by" onchange="setShelfSort(${s.id},this.value)" style="width:auto">${SORT_NAMES.map(([v,l])=>`<option value="${v}" ${v===s.sort?'selected':''}>${l}</option>`).join('')}</select><button onclick="openShelf(${s.id})">Edit</button></span></div>`;
@@ -270,7 +279,7 @@ async function render(){
 async function find(){
   const q=$('#q');if(!q)return;lastQ=q.value.trim();
   try{
-    const bs=lastQ?sorted(await api('/books?q='+encodeURIComponent(lastQ)+pq('&'))):[];
+    const bs=lastQ?sorted(await api('/books?q='+encodeURIComponent(lastQ)+pq('&')+(person?'&shared=true':''))):[];
     $('#res').innerHTML=bs.map(b=>card(b,1)).join('')||`<p>${lastQ?'No matches.':'Search every shelf and the wish list.'}</p>`
   }catch(e){fail(e)}}
 
@@ -298,7 +307,10 @@ async function renderSettings(m){
   <div class="row wrap"><button onclick="dl('/export.json')">Backup (JSON)</button><button onclick="dl('/export.csv')">Spreadsheet (CSV)</button><button onclick="dl('/backup.db')">Database file</button></div>
   <label for="imp">Restore from a JSON backup</label><input type="file" id="imp" accept=".json,application/json" onchange="restore(this)">
   <p class="mut">Restoring replaces every shelf, book and person with what's in the file. Accounts are kept. The server keeps a copy of the current data first.</p>`:''}
-  <h3>About</h3><p class="mut">Home Library is free software, licensed under the GNU Affero General Public License v3. You can use, change and share it. <a href="${esc(about.source)}" target="_blank" rel="noopener">Source code</a></p>`}
+  <h3>Change history</h3><p class="mut">What's been added, moved and changed, and by whom.</p>
+  <ul id="hist" class="groups"></ul><button id="histMore" onclick="loadHistory().catch(fail)" hidden>Show older changes</button>
+  <h3>About</h3><p class="mut">Home Library is free software, licensed under the GNU Affero General Public License v3. You can use, change and share it. <a href="${esc(about.source)}" target="_blank" rel="noopener">Source code</a></p>`;
+  loadHistory(true).catch(fail)}
 const KEY_HELP={isbndb:'Get a key at isbndb.com (paid plans).',google:'Free: create an API key in Google Cloud Console and turn on the Books API for it.'};
 function sourceRow(s){
   const state=s.enabled?(s.key_source?'On, with key':'On'):'Off, needs a key';
@@ -377,6 +389,18 @@ async function orgApply(){
     render()
   }catch(e){fail(e)}}
 
+/* Change history */
+let histBefore=null;
+const when=t=>{const s=Date.now()/1000-t,d=new Date(t*1000);
+  if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' hr ago';
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:d.getFullYear()===new Date().getFullYear()?undefined:'numeric'})};
+async function loadHistory(first){
+  if(first)histBefore=null;
+  const rows=await api('/changes'+(histBefore?'?before_id='+histBefore:''));
+  const ul=$('#hist');if(!ul)return;if(first)ul.innerHTML='';
+  ul.insertAdjacentHTML('beforeend',rows.map(r=>`<li>${esc(r.summary)}<br><span class="mut">${esc(r.username||'Someone')} · ${when(r.at)}</span></li>`).join('')||(first?'<li class="mut">No changes yet.</li>':''));
+  if(rows.length)histBefore=rows.at(-1).id;$('#histMore').hidden=rows.length<50}
+
 /* Shelves */
 function openShelf(id){
   const s=shelves.find(x=>x.id===id);editingShelf=s?s.id:null;
@@ -389,10 +413,18 @@ function saveShelf(){
 function delShelf(){if(confirm('Delete this shelf?'))api('/shelves/'+editingShelf,{method:'DELETE'}).then(()=>{$('#sd').close();shelf=null;render()},fail)}
 
 /* Books */
+const defaultShelf=()=>shelf||(tab==='wish'?'w':(shelves.find(s=>s.name.toLowerCase()==='main')||shelves[0]||{}).id||'');
 function openAdd(){
-  $('#sh').innerHTML=opts(shelf||(tab==='wish'?'w':''));$('#ap').innerHTML=personOpts(person,'Nobody in particular');
+  lastAuto='';$('#sh').innerHTML=opts(defaultShelf());$('#ap').innerHTML=personOpts(person,'Nobody in particular');
   ['isbn','t','a'].forEach(i=>$('#'+i).value='');found={};results=[];$('#results').innerHTML=$('#preview').innerHTML='';$('#add').showModal()}
 const isbnOf=v=>{const d=String(v||'').replace(/[^\dXx]/g,'');return /^[\d\s-]+[\dXx]?$/.test(String(v).trim())&&(d.length===10||d.length===13)?d:''};
+/* True only for a complete ISBN whose check digit is right, so half-typed numbers aren't looked up. */
+function validIsbn(d){
+  if(/^\d{13}$/.test(d))return [...d].reduce((s,c,i)=>s+(+c)*(i%2?3:1),0)%10===0;
+  if(/^\d{9}[\dX]$/i.test(d))return [...d].reduce((s,c,i)=>s+(c.toUpperCase()==='X'?10:+c)*(10-i),0)%11===0;
+  return false}
+let autoT=0,lastAuto='';
+function autoFind(){clearTimeout(autoT);const d=isbnOf($('#isbn').value);if(d&&validIsbn(d)&&d!==lastAuto)autoT=setTimeout(()=>{lastAuto=d;lookup(d)},250)}
 async function findBook(){
   const v=$('#isbn').value.trim();if(!v)return toast('Type an ISBN, or a title and author',true);
   if(isbnOf(v))return lookup(v);
@@ -419,9 +451,43 @@ async function scan(){
   try{
     if(!window.Html5Qrcode)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';s.onload=ok;s.onerror=no;document.head.append(s)});
     scanner=new Html5Qrcode('reader');
-    await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:120},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13]},async t=>{await stopScan();navigator.vibrate?.(60);$('#isbn').value=t;lookup(t)})
+    await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:120},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13]},async t=>{await stopScan();navigator.vibrate?.(60);$('#isbn').value=t;lastAuto=isbnOf(t);lookup(t)})
   }catch(e){scanner=null;$('#reader').innerHTML='';toast('The camera could not start. Scanning needs HTTPS and camera permission. You can type the ISBN instead.',true)}}
 $('#add').addEventListener('close',stopScan);
+let bulkScanner=null,bulkBusy=false,bulkRecent={},bulkAdded=0,bulkT=0;
+const loadScanner=()=>window.Html5Qrcode?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';s.onload=ok;s.onerror=no;document.head.append(s)});
+function openBulk(){
+  const sh=$('#sh').value,ap=$('#ap').value;$('#add').close();
+  $('#bsh').innerHTML=opts(sh);$('#bsh').value=sh;$('#bap').innerHTML=personOpts(ap,'Nobody in particular');
+  $('#blist').innerHTML=$('#bcount').textContent='';$('#bisbn').value='';bulkAdded=0;bulkRecent={};$('#bulk').showModal();
+  if(isSecureContext)bulkCamera();else $('#bisbn').focus()}
+async function bulkCamera(){
+  if(bulkScanner)return stopBulkCam();
+  try{
+    await loadScanner();bulkScanner=new Html5Qrcode('breader');
+    await bulkScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:120},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13]},t=>bulkAdd(t));
+    $('#bcam').textContent='⏹ Stop camera'
+  }catch(e){bulkScanner=null;$('#breader').innerHTML='';toast('The camera could not start. Scanning needs HTTPS and camera permission. You can type ISBNs instead.',true)}}
+async function stopBulkCam(){const s=bulkScanner;bulkScanner=null;$('#breader').innerHTML='';$('#bcam').textContent='📷 Start camera';if(s){try{await s.stop()}catch(e){}}}
+$('#bulk').addEventListener('close',()=>{stopBulkCam();if(bulkAdded)render()});
+function bulkAuto(){clearTimeout(bulkT);const d=isbnOf($('#bisbn').value);if(d&&validIsbn(d))bulkT=setTimeout(()=>bulkAdd(d),250)}
+const bulkCountText=()=>{$('#bcount').textContent=bulkAdded?`${bulkAdded} book${bulkAdded===1?'':'s'} added`:''};
+async function bulkAdd(raw){
+  const isbn=isbnOf(raw);if(!isbn)return toast('That isn’t an ISBN',true);
+  // The camera keeps seeing the same barcode while it's in view; only add it once.
+  const now=Date.now();if(bulkBusy||(bulkRecent[isbn]&&now-bulkRecent[isbn]<5000))return;
+  bulkBusy=true;bulkRecent[isbn]=now;$('#bisbn').value='';navigator.vibrate?.(60);
+  const li=document.createElement('li');li.innerHTML=`<span class="mut">Looking up ${isbn}…</span>`;$('#blist').prepend(li);
+  try{
+    let d=null;try{d=await api('/lookup/'+isbn)}catch(e){}
+    const v=$('#bsh').value,w=v==='w';
+    const body={title:d?.title||`ISBN ${isbn}`,authors:d?.authors||'',isbn:d?.isbn||isbn,cover:d?.cover||'',wishlist:w,shelf_id:w?null:+v,person_id:num($('#bap').value)};
+    if(d)EXTRA.forEach(k=>{if(d[k]!=null&&d[k]!=='')body[k]=d[k]});
+    const {id}=await api('/books',{method:'POST',body});bulkAdded++;bulkCountText();
+    li.innerHTML=`<div class="row" style="margin:0"><span><b style="font-weight:600">${esc(body.title)}</b>${d?`<br><span class="mut">${esc(body.authors)}</span>`:'<br><span class="hot">Not found, so it was added with just its ISBN. Fix it later in Edit book details.</span>'}</span><button class="danger" onclick="bulkUndo(${id},this)">Undo</button></div>`
+  }catch(e){li.innerHTML=`<span class="hot">${esc(e.message)}</span>`}
+  finally{bulkBusy=false}}
+async function bulkUndo(id,btn){try{await api('/books/'+id,{method:'DELETE'});btn.closest('li').remove();bulkAdded--;bulkCountText()}catch(e){fail(e)}}
 const EXTRA=['subtitle','description','publisher','published','pages','subjects','series','series_index','language'];
 function saveNew(){
   const v=$('#sh').value,w=v==='w';
@@ -431,14 +497,15 @@ function saveNew(){
   EXTRA.forEach(k=>{if(found[k]!=null&&found[k]!=='')body[k]=found[k]});
   api('/books',{method:'POST',body}).then(()=>{$('#add').close();toast('Added '+$('#t').value.trim());render()},fail)}
 /* The "Edit book details" fields, by input id. */
-const DETAILS={dt:'title',dst:'subtitle',da:'authors',dse:'series',dsi:'series_index',dpu:'publisher',dpd:'published',dpg:'pages',dis:'isbn',dsu:'subjects',dco:'cover',dde:'description'};
-const NUMERIC=['series_index','pages'];
+const DETAILS={drt:'rating',dsp:'spicy',dt:'title',dst:'subtitle',da:'authors',dse:'series',dsi:'series_index',dpu:'publisher',dpd:'published',dpg:'pages',dis:'isbn',dsu:'subjects',dco:'cover',dde:'description'};
+const NUMERIC=['series_index','pages','rating','spicy'];
 async function edit(id,keepOpen){
   try{const b=await api('/books/'+id);editing=b;
     const tags=b.subjects?`<div class="tags">${b.subjects.split(',').map(s=>s.trim()).filter(Boolean).map(s=>`<span class="tag">${esc(s)}</span>`).join('')}</div>`:'';
-    $('#einfo').innerHTML=infoHtml(b)+tags+(b.description?`<p class="desc" title="Tap to show all" onclick="this.classList.toggle('open')">${esc(b.description)}</p>`:'');
+    const rated=[stars(b),spice(b)].filter(Boolean).join(' · ');
+    $('#einfo').innerHTML=infoHtml(b)+`<p style="margin:.25rem 0">${rated||'<span class="mut">Not rated yet</span>'} <span class="mut">· change in Edit book details</span></p>`+tags+(b.description?`<p class="desc" title="Tap to show all" onclick="this.classList.toggle('open')">${esc(b.description)}</p>`:'');
     $('#esh').innerHTML=opts(b.wishlist?'w':b.shelf_id);$('#epp').innerHTML=personOpts(b.person_id,'Nobody in particular');
-    setRate('er',b.rating||0);setRate('es',b.spicy||0);$('#ev').value=b.review;
+    $('#ev').value=b.review;
     $('#el').value=b.ar_level??'';$('#ep').value=b.ar_points??'';$('#ex').checked=!!b.restricted;
     for(const [i,k] of Object.entries(DETAILS))$('#'+i).value=b[k]??'';
     $('#dfill').hidden=!b.isbn;$('#edet').open=!!keepOpen;
@@ -450,7 +517,7 @@ async function fillBook(){
   catch(e){fail(e)}}
 function saveEdit(){
   const v=$('#esh').value,w=v==='w';
-  const body={wishlist:w,shelf_id:w?null:+v,person_id:num($('#epp').value),rating:+$('#er').dataset.v||0,spicy:+$('#es').dataset.v||0,review:$('#ev').value,ar_level:num($('#el').value),ar_points:num($('#ep').value),restricted:$('#ex').checked};
+  const body={wishlist:w,shelf_id:w?null:+v,person_id:num($('#epp').value),review:$('#ev').value,ar_level:num($('#el').value),ar_points:num($('#ep').value),restricted:$('#ex').checked};
   for(const [i,k] of Object.entries(DETAILS)){const x=$('#'+i).value.trim();body[k]=NUMERIC.includes(k)?num(x):x}
   if(!body.title)return toast('Enter a title',true);
   api('/books/'+editing.id,{method:'PATCH',body}).then(()=>{$('#ed').close();toast('Saved');render()},fail)}
