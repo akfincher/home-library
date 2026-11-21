@@ -42,6 +42,12 @@ MIGRATIONS = [
     ALTER TABLE books ADD COLUMN series_index REAL;
     ALTER TABLE books ADD COLUMN language TEXT DEFAULT '';
     """,
+    # 4: books in the same order as on the real shelf, and each shelf remembers how it's sorted.
+    """
+    ALTER TABLE books ADD COLUMN position REAL;
+    ALTER TABLE shelves ADD COLUMN sort TEXT DEFAULT 'title';
+    CREATE INDEX books_shelf_position ON books(shelf_id, position);
+    """,
 ]
 
 

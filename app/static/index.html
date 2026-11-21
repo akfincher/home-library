@@ -61,6 +61,15 @@ input[type=file]{padding:.5rem}
 .fab{position:fixed;right:1rem;bottom:calc(1rem + var(--sb));border-radius:99px;padding:.8rem 1.3rem;box-shadow:0 4px 12px #0005;z-index:4}
 #reader video{border-radius:8px}
 #warn{max-width:900px;margin:.5rem auto 0;padding:0 1rem}#warn .note{margin:0;font-size:.95rem}
+.note.tip{border-left-color:var(--acc)}
+.arranging .book{cursor:grab;outline:2px dashed var(--line);outline-offset:3px;border-radius:4px;user-select:none;-webkit-user-select:none}
+.ghost{opacity:.35}
+.arrbar{position:fixed;left:0;right:0;bottom:calc(1rem + var(--sb));z-index:7;display:flex;justify-content:center;gap:.75rem;pointer-events:none}
+.arrbar button{pointer-events:auto;min-width:7rem;box-shadow:0 4px 12px #0005}
+.is-arranging .fab{display:none}
+@media(max-width:699px){.arrbar{bottom:calc(var(--nav) + .75rem + var(--sb))}}
+.mv{display:flex;justify-content:space-between;margin-bottom:.25rem}.mv button{min-height:36px;min-width:40px;padding:0}
+.groups{list-style:none;padding:0;margin:.5rem 0}.groups li{border-bottom:1px solid var(--line);padding:.5rem 0}
 .note{background:var(--bg);border-left:4px solid var(--hot);border-radius:6px;padding:.6rem .8rem;margin:.75rem 0;font-size:.9rem}
 .results>button{display:flex;gap:.75rem;align-items:center;width:100%;text-align:left;margin:.4rem 0;padding:.5rem}
 .thumb{width:44px;aspect-ratio:2/3;object-fit:cover;flex:none;border-radius:2px;background:var(--line)}
@@ -142,6 +151,17 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <div class="row acts"><button id="sdx" class="danger" onclick="delShelf()">Delete</button><span style="flex:1"></span><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveShelf()">Save</button></div>
 </dialog>
 
+<dialog id="org" aria-labelledby="orgT"><h2 id="orgT">Organize shelves</h2>
+<p class="mut">The app puts your books onto shelves by a rule. You'll see the result before anything moves. Wish list books aren't touched, and a backup is saved first.</p>
+<label for="orule">Put books on shelves by</label>
+<select id="orule" onchange="orgPreview()"><option value="genre">Genre (subjects books share)</option><option value="author">Author's last name (A–C, D–F…)</option><option value="series">Series</option><option value="level">Reading level (AR)</option><option value="person">Whose book it is</option></select>
+<label for="operson">Which books</label><select id="operson" onchange="orgPreview()"></select>
+<label for="omin">Smallest shelf</label><select id="omin" onchange="orgPreview()"><option value="1">1 book</option><option value="2">2 books</option><option value="3" selected>3 books</option><option value="5">5 books</option><option value="10">10 books</option></select>
+<p class="mut" style="margin:.25rem 0">Groups smaller than this share one "Other" shelf.</p>
+<div id="oprev" aria-live="polite"></div>
+<div class="row acts"><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" id="ogo" onclick="orgApply()">Organize</button></div>
+</dialog>
+
 <dialog id="ask" aria-labelledby="askT"><form method="dialog"><h2 id="askT"></h2>
 <label for="askI" id="askL"></label><input id="askI" autocomplete="off">
 <div class="row acts"><button type="button" onclick="this.closest('dialog').close()">Cancel</button><button class="p" value="ok" id="askOk">OK</button></div>
@@ -150,7 +170,7 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
 const store={get:k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
-let tab='shelves',shelf=null,sort='title',shelves=[],people=[],person=store.get('person'),tok=store.get('tok'),editing=null,editingShelf=null,lastQ='',scanner=null,findTimer=0,found={},results=[];
+let arranging=false,tab='shelves',shelf=null,sort='title',shelves=[],people=[],person=store.get('person'),tok=store.get('tok'),editing=null,editingShelf=null,lastQ='',scanner=null,findTimer=0,found={},results=[];
 const open=()=>tok&&+tok.split('.')[0]>Date.now()/1000;
 const setTok=t=>{tok=t;store.set('tok',t)};
 async function api(p,o={}){
@@ -167,14 +187,16 @@ function ask({title,label,value='',pin=false,ok='OK'}){
   i.type=pin?'password':'text';i.inputMode=pin?'numeric':'text';i.autocapitalize=pin?'off':'words';i.value=value;
   d.returnValue='';d.showModal();i.focus();
   return new Promise(res=>d.addEventListener('close',()=>res(d.returnValue==='ok'?i.value:null),{once:true}))}
-const go=t=>{tab=t;shelf=null;render();scrollTo(0,0)};
+const go=t=>{tab=t;shelf=null;arranging=false;render();scrollTo(0,0)};
 const pq=(pre='?')=>person?pre+'person_id='+person:'';
 const setPerson=v=>{person=v;store.set('person',v);shelf=null;render()};
 const byTitle=(x,y)=>x.title.localeCompare(y.title);
 const SORTS={title:byTitle,author:(x,y)=>x.authors.localeCompare(y.authors)||byTitle(x,y),
   series:(x,y)=>(!x.series)-(!y.series)||x.series.localeCompare(y.series)||(x.series_index??0)-(y.series_index??0)||byTitle(x,y),
-  added:(x,y)=>y.id-x.id};
-const sorted=a=>[...a].sort(SORTS[sort]||byTitle);
+  added:(x,y)=>y.id-x.id,
+  custom:(x,y)=>(x.position==null)-(y.position==null)||(x.position??0)-(y.position??0)||byTitle(x,y)};
+const sorted=(a,how=sort)=>[...a].sort(SORTS[how]||byTitle);
+const SORT_NAMES=[['custom','My order'],['title','Title'],['author','Author'],['series','Series'],['added','Newest']];
 const seriesText=b=>b.series?b.series+(b.series_index!=null?' #'+b.series_index:''):'';
 function infoHtml(b){
   const facts=[b.publisher,b.published,b.pages?b.pages+' pages':''].filter(Boolean).join(' · ');
@@ -190,8 +212,10 @@ makeRate('er','★','star','star');makeRate('es','🌶','','pepper');
 
 function card(b,showShelf){
   const img=b.cover?`<img src="${esc(b.cover)}" alt="" loading="lazy">`:`<div class="ph">${esc(b.title)}</div>`;
-  return `<div class="book" role="button" tabindex="0" onclick="edit(${b.id})" onkeydown="if(event.key==='Enter')edit(${b.id})">${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.series?'<br><span class="mut">'+esc(seriesText(b))+'</span>':''}${b.rating?'<br><span class="star on">'+'★'.repeat(b.rating)+'</span>':''}${b.spicy?'<br><span class="hot">'+'🌶'.repeat(b.spicy)+'</span>':''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}</div>`}
+  const mv=arranging?`<span class="mv"><button type="button" aria-label="Move ${esc(b.title)} left" onclick="moveCard(this,-1)">◀</button><button type="button" aria-label="Move ${esc(b.title)} right" onclick="moveCard(this,1)">▶</button></span>`:'';
+  return `<div class="book" data-id="${b.id}" role="button" tabindex="0" onclick="if(!arranging)edit(${b.id})" onkeydown="if(event.key==='Enter'&&!arranging)edit(${b.id})">${mv}${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.series?'<br><span class="mut">'+esc(seriesText(b))+'</span>':''}${b.rating?'<br><span class="star on">'+'★'.repeat(b.rating)+'</span>':''}${b.spicy?'<br><span class="hot">'+'🌶'.repeat(b.spicy)+'</span>':''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}</div>`}
 async function render(){
+  document.body.classList.toggle('is-arranging',arranging);
   document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tab));
   $('#lock').innerHTML=open()?'<span aria-hidden="true">🔓</span><span class="lbl"> Lock</span>':'<span aria-hidden="true">🔒</span><span class="lbl"> Restricted</span>';
   $('#lock').setAttribute('aria-label',open()?'Lock the restricted section':'Open the restricted section');
@@ -202,11 +226,16 @@ async function render(){
   const m=$('main');
   try{
   if(tab==='shelves'&&!shelf){
-    m.innerHTML=`<div class="row"><h2>Shelves</h2><button onclick="openShelf()">New shelf</button></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render();scrollTo(0,0)"><span>${esc(s.name)} <small class="mut">(${s.count})</small>${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</span></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
+    m.innerHTML=`<div class="row"><h2>Shelves</h2><span style="display:flex;gap:.5rem"><button onclick="openOrganize()">Organize</button><button onclick="openShelf()">New shelf</button></span></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render();scrollTo(0,0)"><span>${esc(s.name)} <small class="mut">(${s.count})</small>${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</span></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
   if(tab==='shelves'){
     const s=shelves.find(x=>x.id===shelf);if(!s){shelf=null;return render()}
-    const bs=sorted(await api('/books?shelf_id='+shelf));
-    m.innerHTML=`<div class="row"><button onclick="shelf=null;render()">‹ Shelves</button><span style="display:flex;gap:.5rem"><select aria-label="Sort by" onchange="sort=this.value;render()" style="width:auto">${[['title','Title'],['author','Author'],['series','Series'],['added','Newest']].map(([v,l])=>`<option value="${v}" ${v===sort?'selected':''}>${l}</option>`).join('')}</select><button onclick="openShelf(${s.id})">Edit</button></span></div><h2>${esc(s.name)}${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>This shelf is empty. Tap Add book.</p>'}</div>`;return}
+    const bs=sorted(await api('/books?shelf_id='+shelf),s.sort);
+    const head=arranging
+      ?`<div class="arrbar"><button onclick="arranging=false;render()">Cancel</button><button class="p" onclick="saveOrder(${s.id})">Done</button></div><p class="note tip">Drag the books into the same order as your real shelf, left to right, then tap Done. You can also use the arrows.</p>`
+      :`<div class="row"><button onclick="shelf=null;render()">‹ Shelves</button><span style="display:flex;gap:.5rem"><select aria-label="Sort by" onchange="setShelfSort(${s.id},this.value)" style="width:auto">${SORT_NAMES.map(([v,l])=>`<option value="${v}" ${v===s.sort?'selected':''}>${l}</option>`).join('')}</select><button onclick="openShelf(${s.id})">Edit</button></span></div>`;
+    m.innerHTML=head+`<h2>${esc(s.name)}${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</h2><div class="shelf${arranging?' arranging':''}" id="shelfBooks">${bs.map(b=>card(b)).join('')||'<p>This shelf is empty. Tap Add book.</p>'}</div>${!arranging&&bs.length>1?'<button onclick="arranging=true;render()">↔ Arrange to match my shelf</button>':''}`;
+    if(arranging){scrollTo(0,0);enableDrag()}
+    return}
   if(tab==='wish'){
     const bs=sorted(await api('/books?wishlist=1'+pq('&')));
     m.innerHTML=`<h2>Wish list</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>Nothing on the wish list yet.</p>'}</div>`;return}
@@ -277,6 +306,42 @@ async function restore(input){
     let data;try{data=JSON.parse(await f.text())}catch(e){throw new Error("That file isn't valid JSON.")}
     if(!confirm(`Replace everything with this backup (${(data.books||[]).length} books, ${(data.shelves||[]).length} shelves)?`))return;
     const n=await api('/import',{method:'POST',body:data});toast(`Restored ${n.books} books, ${n.shelves} shelves and ${n.people} people`);render()
+  }catch(e){fail(e)}}
+
+/* Arranging a shelf by hand */
+async function setShelfSort(id,v){try{await api('/shelves/'+id+'/sort',{method:'PUT',body:{sort:v}});render()}catch(e){fail(e)}}
+function moveCard(btn,dir){
+  event.stopPropagation();const el=btn.closest('.book'),to=dir<0?el.previousElementSibling:el.nextElementSibling;
+  if(!to)return;dir<0?to.before(el):to.after(el);btn.focus()}
+async function enableDrag(){
+  try{
+    if(!window.Sortable)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';s.onload=ok;s.onerror=no;document.head.append(s)});
+    const el=$('#shelfBooks');if(el)Sortable.create(el,{animation:150,delay:150,delayOnTouchOnly:true,forceFallback:true,fallbackTolerance:4,ghostClass:'ghost',draggable:'.book',filter:'.mv',preventOnFilter:false})
+  }catch(e){toast('Dragging could not load. Use the arrows to move books instead.',true)}}
+async function saveOrder(id){
+  const ids=[...$('#shelfBooks').querySelectorAll('.book')].map(el=>+el.dataset.id);
+  try{await api('/shelves/'+id+'/order',{method:'PUT',body:{book_ids:ids}});arranging=false;toast('Shelf order saved');render()}catch(e){fail(e)}}
+
+/* Letting the app organize */
+function openOrganize(){
+  $('#operson').innerHTML=`<option value="">Everyone's books</option>`+people.map(p=>`<option value="${p.id}" ${p.id==person?'selected':''}>Only ${esc(p.name)}'s books, onto their shelves</option>`).join('');
+  $('#org').showModal();orgPreview()}
+const orgBody=()=>({rule:$('#orule').value,person_id:num($('#operson').value),min_size:+$('#omin').value});
+async function orgPreview(){
+  const out=$('#oprev');out.innerHTML='<p class="mut">Working it out…</p>';$('#ogo').disabled=true;
+  try{
+    const p=await api('/organize/preview',{method:'POST',body:orgBody()});
+    if(!p.total){out.innerHTML='<p class="mut">There are no books on shelves to organize.</p>';return}
+    out.innerHTML=`<p><b>${p.moves} of ${p.total} book${p.total===1?'':'s'}</b> would move, onto ${p.groups.length} ${p.groups.length===1?'shelf':'shelves'}:</p><ul class="groups">${p.groups.map(g=>`<li><b style="font-weight:600">${esc(g.name)}</b> <span class="mut">(${g.count})</span><br><span class="mut">${g.titles.map(esc).join(' · ')}${g.count>g.titles.length?' …':''}</span></li>`).join('')}</ul>`;
+    $('#ogo').disabled=!p.moves
+  }catch(e){out.innerHTML='';fail(e)}}
+async function orgApply(){
+  try{
+    const r=await api('/organize/apply',{method:'POST',body:orgBody()});
+    $('#org').close();shelf=null;toast(`Moved ${r.moved} book${r.moved===1?'':'s'} onto ${r.shelves} ${r.shelves===1?'shelf':'shelves'}`);
+    if(r.empty_shelves&&confirm(`${r.empty_shelves} shel${r.empty_shelves===1?'f is':'ves are'} now empty. Delete ${r.empty_shelves===1?'it':'them'}?`)){
+      const d=await api('/shelves/delete-empty',{method:'POST'});toast(`Deleted ${d.deleted} empty shel${d.deleted===1?'f':'ves'}`)}
+    render()
   }catch(e){fail(e)}}
 
 /* Shelves */

@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config, db, security, storage
-from .routers import backup, books, lookup, people, pin, shelves
+from .routers import backup, books, lookup, organize, people, pin, shelves
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 
@@ -19,7 +19,7 @@ def create_app(db_path: str | None = None) -> FastAPI:
         yield
 
     app = FastAPI(title="Home Library", lifespan=lifespan)
-    for r in (pin, people, shelves, books, lookup, backup):
+    for r in (pin, people, shelves, books, lookup, backup, organize):
         app.include_router(r.router)
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 

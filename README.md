@@ -4,6 +4,8 @@ A free, self-hosted web app for cataloging a home bookshelf. One container, SQLi
 
 ## Features
 - Shelves you name and arrange, each either shared or belonging to one person in the household
+- Arrange a shelf to match your real one: drag books into order (or use the arrows), and new books you add go on the end, so scanning a shelf left to right recreates it. Each shelf remembers how it's sorted: My order, title, author, series or newest
+- Or let the app organize: put shelved books onto shelves by genre, author's last name, series, reading level or whose book it is. You see the result before anything moves, small groups share an "Other" shelf, the wish list is left alone, and a copy of the database is saved first
 - People: add everyone in the house, then pick a person at the top to see only their shelves and wish list
 - Add books by scanning the ISBN barcode, typing the ISBN, or searching by title and author, then picking the right book
 - Book details filled in automatically: cover, subtitle, description, publisher, date, pages, subjects and language, from ISBNdb (with a paid API key), Open Library and Google Books. Each source only fills what the earlier ones left blank. Series and anything else can be edited by hand, and Settings can fill in blanks for books already in your library without touching what you typed

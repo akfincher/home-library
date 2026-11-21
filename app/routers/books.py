@@ -25,6 +25,13 @@ def _visible(bid: int, is_unlocked: bool) -> dict:
     return r
 
 
+def _end_of(sid: int | None):
+    """The position just after the last book on a shelf, so new arrivals go at the end."""
+    if sid is None:
+        return None
+    return (db.one("SELECT MAX(position) AS m FROM books WHERE shelf_id=?", (sid,))["m"] or 0) + 1
+
+
 def _shelf(sid: int | None) -> dict | None:
     if sid is None:
         return None
@@ -64,7 +71,8 @@ def add_book(b: BookIn):
     data.update(title=b.title.strip(), authors=b.authors.strip(), isbn=b.isbn.strip(), wishlist=int(b.wishlist),
                 shelf_id=shelf["id"] if shelf else None,
                 # A book added to someone's shelf belongs to them unless told otherwise.
-                person_id=b.person_id if b.person_id is not None else (shelf or {}).get("person_id"))
+                person_id=b.person_id if b.person_id is not None else (shelf or {}).get("person_id"),
+                position=_end_of(shelf["id"] if shelf else None))
     cur = db.run(f"INSERT INTO books({', '.join(data)}) VALUES({', '.join('?' * len(data))})", list(data.values()))
     return {"id": cur.lastrowid}
 
@@ -76,7 +84,7 @@ def get_book(bid: int, is_unlocked: bool = Depends(unlocked)):
 
 @router.patch("/{bid}")
 def patch_book(bid: int, body: BookPatch, is_unlocked: bool = Depends(unlocked)):
-    _visible(bid, is_unlocked)
+    book = _visible(bid, is_unlocked)
     sets = body.model_dump(exclude_unset=True)
     if "title" in sets and not (sets["title"] or "").strip():
         raise HTTPException(400, "Enter a title")
@@ -88,6 +96,8 @@ def patch_book(bid: int, body: BookPatch, is_unlocked: bool = Depends(unlocked))
         ensure_person(sets["person_id"])
     if sets.get("wishlist"):
         sets["shelf_id"] = None
+    if "shelf_id" in sets and sets["shelf_id"] != book["shelf_id"]:
+        sets["position"] = _end_of(sets["shelf_id"])
     for k, v in sets.items():
         if k in ("wishlist", "restricted") and v is not None:
             sets[k] = int(v)

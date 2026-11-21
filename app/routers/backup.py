@@ -19,10 +19,10 @@ router = APIRouter(prefix="/api", dependencies=[Depends(require_admin)])
 EXPORT_VERSION = 1
 COLUMNS = {
     "people": ["id", "name"],
-    "shelves": ["id", "name", "person_id"],
+    "shelves": ["id", "name", "person_id", "sort"],
     "books": ["id", "isbn", "title", "authors", "cover", "shelf_id", "person_id", "wishlist", "restricted",
               "rating", "spicy", "review", "ar_level", "ar_points", "subtitle", "description", "publisher",
-              "published", "pages", "subjects", "series", "series_index", "language"],
+              "published", "pages", "subjects", "series", "series_index", "language", "position"],
 }
 CSV_COLUMNS = ["title", "subtitle", "authors", "series", "series_index", "isbn", "publisher", "published", "pages",
                "subjects", "language", "shelf", "person", "wishlist", "restricted", "rating", "spicy", "ar_level",

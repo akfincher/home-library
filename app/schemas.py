@@ -1,4 +1,24 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+# "custom" is the order the books were arranged in by hand, to match the real shelf.
+SortName = Literal["title", "author", "series", "added", "custom"]
+RuleName = Literal["genre", "author", "series", "level", "person"]
+
+
+class ShelfSort(BaseModel):
+    sort: SortName
+
+
+class ShelfOrder(BaseModel):
+    book_ids: list[int] = Field(max_length=5000)
+
+
+class OrganizeIn(BaseModel):
+    rule: RuleName
+    person_id: int | None = None  # only that person's books; None means every book on a shelf
+    min_size: int = Field(3, ge=1, le=50)  # smaller groups are put together on an "Other" shelf
 
 
 class Named(BaseModel):
