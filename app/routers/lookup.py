@@ -12,9 +12,10 @@ def lookup(isbn: str):
     clean = metadata.clean_isbn(isbn)
     if not clean:
         raise HTTPException(400, "That doesn't look like an ISBN (10 or 13 digits).")
-    found = metadata.lookup(clean)
+    problems = []
+    found = metadata.lookup(clean, problems)
     if not found:
-        raise HTTPException(404, "No match found")
+        raise HTTPException(404, " ".join(["No match found.", *(p + "." for p in problems)]))
     return found
 
 
@@ -23,7 +24,9 @@ def search(q: str = ""):
     q = q.strip()
     if len(q) < 2:
         raise HTTPException(400, "Type a title or author to search for.")
-    return {"results": metadata.search(q)}
+    problems = []
+    results = metadata.search(q, problems=problems)
+    return {"results": results, "problems": problems}
 
 
 @router.get("/sources")

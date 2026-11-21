@@ -203,3 +203,23 @@ def test_google_out_of_quota_while_checking_key(c, web):
     web({"googleapis.com": http_error(429)})
     r = c.put("/api/sources/google", json={"key": "g-key"})
     assert r.status_code == 502 and "Try again later" in r.json()["detail"]
+
+
+def test_not_found_says_which_sources_could_not_be_asked(c, web):
+    web({"openlibrary.org/api/books": {}, "googleapis.com": http_error(429)})
+    r = c.get(f"/api/lookup/{ISBN}")
+    assert r.status_code == 404
+    assert r.json()["detail"].startswith("No match found. Google Books couldn't be asked")
+    assert "free Google Books key in Settings" in r.json()["detail"]
+
+
+def test_not_found_plain_when_every_source_answered(c, web):
+    web({"openlibrary.org/api/books": {}, "googleapis.com": {}})
+    assert c.get(f"/api/lookup/{ISBN}").json()["detail"] == "No match found."
+
+
+def test_search_reports_problems(c, web):
+    web({"googleapis.com": http_error(429), "search.json": TimeoutError("down")})
+    r = c.get("/api/lookup?q=dune").json()
+    assert r["results"] == []
+    assert len(r["problems"]) == 2 and "Open Library couldn't be reached" in r["problems"]

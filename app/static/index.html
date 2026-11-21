@@ -60,6 +60,7 @@ input[type=file]{padding:.5rem}
 .star.on{color:#e0a100}
 .fab{position:fixed;right:1rem;bottom:calc(1rem + var(--sb));border-radius:99px;padding:.8rem 1.3rem;box-shadow:0 4px 12px #0005;z-index:4}
 #reader video{border-radius:8px}
+.note{background:var(--bg);border-left:4px solid var(--hot);border-radius:6px;padding:.6rem .8rem;margin:.75rem 0;font-size:.9rem}
 .results>button{display:flex;gap:.75rem;align-items:center;width:100%;text-align:left;margin:.4rem 0;padding:.5rem}
 .thumb{width:44px;aspect-ratio:2/3;object-fit:cover;flex:none;border-radius:2px;background:var(--line)}
 .info{display:flex;gap:1rem;align-items:flex-start;margin:.5rem 0}
@@ -297,8 +298,9 @@ async function findBook(){
   if(isbnOf(v))return lookup(v);
   $('#results').innerHTML='<p class="mut">Searching…</p>';$('#preview').innerHTML='';
   try{
-    results=(await api('/lookup?q='+encodeURIComponent(v))).results;
-    $('#results').innerHTML=results.length?'<p class="mut" style="margin:.75rem 0 0">Tap the right one:</p>'+results.map((r,i)=>`<button onclick="pick(${i})">${r.cover?`<img class="thumb" src="${esc(r.cover)}" alt="">`:'<span class="thumb"></span>'}<span><b>${esc(r.title)}</b>${r.subtitle?': '+esc(r.subtitle):''}<br><span class="mut">${esc(r.authors)}${r.published?' · '+esc(r.published.slice(0,4)):''}</span></span></button>`).join(''):'<p class="mut">Nothing found. Enter the details by hand below.</p>'
+    const r=await api('/lookup?q='+encodeURIComponent(v));results=r.results;
+    const note=r.problems.length?`<p class="note">${esc(r.problems.join('. '))}.</p>`:'';
+    $('#results').innerHTML=note+(results.length?'<p class="mut" style="margin:.75rem 0 0">Tap the right one:</p>'+results.map((r,i)=>`<button onclick="pick(${i})">${r.cover?`<img class="thumb" src="${esc(r.cover)}" alt="">`:'<span class="thumb"></span>'}<span><b>${esc(r.title)}</b>${r.subtitle?': '+esc(r.subtitle):''}<br><span class="mut">${esc(r.authors)}${r.published?' · '+esc(r.published.slice(0,4)):''}</span></span></button>`).join(''):'<p class="mut">Nothing found. Enter the details by hand below.</p>')
   }catch(e){$('#results').innerHTML='';fail(e)}}
 async function pick(i){
   let r=results[i];
@@ -308,7 +310,9 @@ async function pick(i){
 function applyFound(d){found=d;$('#results').innerHTML='';$('#t').value=d.title||'';$('#a').value=d.authors||'';$('#preview').innerHTML=infoHtml(d)}
 async function lookup(v){
   try{const d=await api('/lookup/'+encodeURIComponent(v));applyFound(d);toast('Found: '+d.title)}
-  catch(e){found={isbn:isbnOf(v)};$('#preview').innerHTML='';toast(e.message==='No match found'?'No match found. Enter the title and author by hand.':e.message,true)}}
+  catch(e){found={isbn:isbnOf(v)};
+    const msg=e.message.startsWith('No match found')?e.message+' You can tap Find with the title and author instead, or type the details below.':e.message;
+    $('#preview').innerHTML=`<p class="note">${esc(msg)}</p>`}}
 async function stopScan(){const s=scanner;scanner=null;$('#reader').innerHTML='';if(s){try{await s.stop()}catch(e){}}}
 async function scan(){
   if(scanner)return stopScan();

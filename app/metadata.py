@@ -251,8 +251,21 @@ def status():
     return out
 
 
-def lookup(isbn: str) -> dict | None:
-    """Everything the sources know about one ISBN, merged, or None."""
+def problem(source, err: Exception) -> str:
+    """A plain-language reason a source couldn't be asked."""
+    if isinstance(err, KeyRejected):
+        return str(err)
+    if isinstance(err, urllib.error.HTTPError) and err.code == 429:
+        if isinstance(source, GoogleBooks) and not source.key():
+            return ("Google Books couldn't be asked: its shared free daily limit is used up. "
+                    "Adding your own free Google Books key in Settings fixes this")
+        return f"{source.name} couldn't be asked: its daily limit is used up"
+    return f"{source.name} couldn't be reached"
+
+
+def lookup(isbn: str, problems: list | None = None) -> dict | None:
+    """Everything the sources know about one ISBN, merged, or None. Reasons any
+    source couldn't be asked are added to `problems`."""
     # Every source accepts the 13-digit form, and it's the one stored.
     isbn = to_isbn13(isbn)
     result, used = {}, []
@@ -261,7 +274,9 @@ def lookup(isbn: str) -> dict | None:
             continue
         try:
             d = s.by_isbn(isbn)
-        except Exception:  # one source being down or refusing shouldn't stop the others
+        except Exception as e:  # one source being down or refusing shouldn't stop the others
+            if problems is not None:
+                problems.append(problem(s, e))
             continue
         if not d or not d.get("title"):
             continue
@@ -279,7 +294,7 @@ def lookup(isbn: str) -> dict | None:
     return result
 
 
-def search(q: str, limit: int = 15) -> list[dict]:
+def search(q: str, limit: int = 15, problems: list | None = None) -> list[dict]:
     """Candidates for a title/author search, best sources first, without repeats."""
     out, seen = [], set()
     for s in sorted(sources(), key=lambda s: ["ISBNdb", "Google Books", "Open Library"].index(s.name)):
@@ -287,7 +302,9 @@ def search(q: str, limit: int = 15) -> list[dict]:
             continue
         try:
             found = s.search(q)
-        except Exception:
+        except Exception as e:
+            if problems is not None:
+                problems.append(problem(s, e))
             continue
         for r in found:
             if not r.get("title"):
