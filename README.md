@@ -5,8 +5,9 @@ A free, self-hosted web app for cataloging a home bookshelf. One container, SQLi
 ## Features
 - Shelves you name and arrange, each either shared or belonging to one person in the household
 - People: add everyone in the house, then pick a person at the top to see only their shelves and wish list
-- Add books by scanning the ISBN barcode or by hand (details from Open Library)
-- Search across every shelf and the wish list by title, author or ISBN
+- Add books by scanning the ISBN barcode, typing the ISBN, or searching by title and author, then picking the right book
+- Book details filled in automatically: cover, subtitle, description, publisher, date, pages, subjects and language, from ISBNdb (with a paid API key), Open Library and Google Books. Each source only fills what the earlier ones left blank. Series and anything else can be edited by hand, and Settings can fill in blanks for books already in your library without touching what you typed
+- Search across every shelf and the wish list by title, author, series, subject, publisher or ISBN; sort shelves by title, author, series or newest
 - Wish list, reviews, 1-5 ratings, spicy rating, AR level/points (manual entry)
 - A restricted section hidden behind a PIN that unlocks for 15 minutes (`UNLOCK_SECONDS` to change). After 5 wrong PINs the app makes you wait, doubling each time up to 15 minutes. Changing the PIN locks every device that had it open.
 - Backups: download everything as JSON (and restore it later), as a spreadsheet (CSV), or as the raw database file, from Settings
@@ -53,6 +54,13 @@ Common problems:
 - *Library empty after an update*: Storage was left as temporary storage instead of a Host Path.
 
 **HTTPS (needed for live barcode scanning on phones):** put a reverse proxy in front, such as the Nginx Proxy Manager app: add a Proxy Host forwarding to `http://<truenas-ip>:30080` and request a certificate on its SSL tab. Tailscale Serve also works and keeps the app private to your devices. Don't expose the app to the internet (for example through a public Cloudflare Tunnel) without a login in front of it, because it has no accounts of its own.
+
+## Book details sources
+- **Open Library**: free, always on.
+- **Google Books**: free, but without a key it shares one small daily allowance with every other app that has no key, which often runs out. Create a free API key in Google Cloud Console (turn on the Books API for it) and paste it in Settings.
+- **ISBNdb**: paid, knows the most books. Paste your API key in Settings and it's asked first.
+
+Keys can also be set with the `ISBNDB_API_KEY` and `GOOGLE_BOOKS_API_KEY` environment variables, which take priority over Settings. Keys are never included in JSON or CSV exports.
 
 ## Upgrading
 Pull the new image and restart the container. The database upgrades itself on startup, and saves a copy of the old one first as `library.db.pre-vN-<date>.bak` in the data folder. Once the new version is working you can delete that file. Restoring a JSON backup also saves a `library.db.pre-import-<date>.bak` first.

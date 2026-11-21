@@ -152,7 +152,7 @@ def test_export_and_restore_round_trip(c):
     assert "pin" not in str(data) and "secret" not in str(data)
 
     csv = c.get("/api/export.csv", headers=h).text
-    assert "Dune,Frank Herbert" in csv and "Den,Mia" in csv
+    assert "Dune,,Frank Herbert" in csv and "Den,Mia" in csv
 
     c.post("/api/books", json={"title": "Added later", "wishlist": True})
     r = c.post("/api/import", json=data, headers=h)

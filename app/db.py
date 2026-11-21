@@ -30,6 +30,18 @@ MIGRATIONS = [
     CREATE INDEX books_shelf ON books(shelf_id);
     CREATE INDEX books_person ON books(person_id);
     """,
+    # 3: richer book details, filled in from ISBNdb / Open Library / Google Books.
+    """
+    ALTER TABLE books ADD COLUMN subtitle TEXT DEFAULT '';
+    ALTER TABLE books ADD COLUMN description TEXT DEFAULT '';
+    ALTER TABLE books ADD COLUMN publisher TEXT DEFAULT '';
+    ALTER TABLE books ADD COLUMN published TEXT DEFAULT '';
+    ALTER TABLE books ADD COLUMN pages INTEGER;
+    ALTER TABLE books ADD COLUMN subjects TEXT DEFAULT '';
+    ALTER TABLE books ADD COLUMN series TEXT DEFAULT '';
+    ALTER TABLE books ADD COLUMN series_index REAL;
+    ALTER TABLE books ADD COLUMN language TEXT DEFAULT '';
+    """,
 ]
 
 
@@ -82,6 +94,10 @@ def get_setting(k):
 
 def put_setting(k, v):
     run("INSERT OR REPLACE INTO settings VALUES(?,?)", (k, v))
+
+
+def delete_setting(k):
+    run("DELETE FROM settings WHERE k=?", (k,))
 
 
 def backup_to(dest: str) -> None:

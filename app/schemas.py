@@ -23,6 +23,15 @@ class BookIn(BaseModel):
     shelf_id: int | None = None
     person_id: int | None = None
     wishlist: bool = False
+    subtitle: str = Field("", max_length=500)
+    description: str = Field("", max_length=20000)
+    publisher: str = Field("", max_length=300)
+    published: str = Field("", max_length=50)
+    pages: int | None = Field(None, ge=1, le=100000)
+    subjects: str = Field("", max_length=1000)
+    series: str = Field("", max_length=300)
+    series_index: float | None = Field(None, ge=0, le=10000)
+    language: str = Field("", max_length=20)
 
 
 class BookPatch(BaseModel):
@@ -40,3 +49,12 @@ class BookPatch(BaseModel):
     review: str | None = Field(None, max_length=20000)
     ar_level: float | None = Field(None, ge=0, le=20)
     ar_points: float | None = Field(None, ge=0, le=500)
+    subtitle: str | None = Field(None, max_length=500)
+    description: str | None = Field(None, max_length=20000)
+    publisher: str | None = Field(None, max_length=300)
+    published: str | None = Field(None, max_length=50)
+    pages: int | None = Field(None, ge=1, le=100000)
+    subjects: str | None = Field(None, max_length=1000)
+    series: str | None = Field(None, max_length=300)
+    series_index: float | None = Field(None, ge=0, le=10000)
+    language: str | None = Field(None, max_length=20)

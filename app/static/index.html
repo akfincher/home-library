@@ -60,6 +60,16 @@ input[type=file]{padding:.5rem}
 .star.on{color:#e0a100}
 .fab{position:fixed;right:1rem;bottom:calc(1rem + var(--sb));border-radius:99px;padding:.8rem 1.3rem;box-shadow:0 4px 12px #0005;z-index:4}
 #reader video{border-radius:8px}
+.results>button{display:flex;gap:.75rem;align-items:center;width:100%;text-align:left;margin:.4rem 0;padding:.5rem}
+.thumb{width:44px;aspect-ratio:2/3;object-fit:cover;flex:none;border-radius:2px;background:var(--line)}
+.info{display:flex;gap:1rem;align-items:flex-start;margin:.5rem 0}
+.info img{width:88px;aspect-ratio:2/3;object-fit:cover;flex:none;border-radius:2px 4px 4px 2px;box-shadow:2px 3px 6px #0004}
+.info b{font-family:"Iowan Old Style",Palatino,Georgia,serif;font-size:1.25rem;line-height:1.2}
+.tags{display:flex;flex-wrap:wrap;gap:.3rem;margin:.5rem 0}.tags .tag{margin:0}
+.desc{white-space:pre-line;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;margin:.5rem 0;cursor:pointer}
+.desc.open{display:block}
+details{margin-top:1rem;border-top:1px solid var(--line);padding-top:.5rem}
+summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--acc)}
 #toast{position:fixed;left:1rem;right:1rem;bottom:calc(5rem + var(--sb));max-width:420px;margin:auto;background:var(--ink);color:var(--bg);border-radius:10px;padding:.75rem 1rem;box-shadow:0 4px 16px #0006;z-index:10;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none}
 #toast.show{opacity:1;transform:none}
 #toast.err{background:var(--hot);color:#fff}
@@ -91,8 +101,9 @@ input[type=file]{padding:.5rem}
 
 <dialog id="add" aria-labelledby="addT"><h2 id="addT">Add book</h2>
 <button class="p wide" onclick="scan()" style="margin-top:1rem">📷 Scan barcode</button><div id="reader" style="margin-top:.5rem"></div>
-<label for="isbn">Or type the ISBN</label>
-<div class="row" style="margin:0"><input id="isbn" inputmode="numeric" enterkeyhint="search" autocomplete="off" onkeydown="if(event.key==='Enter')lookup()"><button onclick="lookup()">Look up</button></div>
+<label for="isbn">Or type an ISBN, or a title and author</label>
+<div class="row" style="margin:0"><input id="isbn" type="search" enterkeyhint="search" autocomplete="off" onkeydown="if(event.key==='Enter')findBook()"><button onclick="findBook()">Find</button></div>
+<div id="results" class="results"></div><div id="preview"></div>
 <label for="t">Title</label><input id="t" autocapitalize="words" enterkeyhint="next">
 <label for="a">Author</label><input id="a" autocapitalize="words" enterkeyhint="next">
 <label for="sh">Shelf</label><select id="sh"></select>
@@ -100,13 +111,25 @@ input[type=file]{padding:.5rem}
 <div class="row acts"><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveNew()">Add book</button></div>
 </dialog>
 
-<dialog id="ed" aria-labelledby="et"><h2 id="et"></h2><p id="ea" class="mut" style="margin:.25rem 0 0"></p>
+<dialog id="ed" aria-label="Book"><div id="einfo"></div>
 <div class="two"><div><label for="esh">Shelf</label><select id="esh"></select></div><div><label for="epp">Whose book</label><select id="epp"></select></div></div>
 <label id="erL">Rating</label><div class="rate" id="er" role="group" aria-labelledby="erL"></div>
 <label id="esL">Spicy rating</label><div class="rate" id="es" role="group" aria-labelledby="esL"></div>
 <label for="ev">Review</label><textarea id="ev" rows="4"></textarea>
 <div class="two"><div><label for="el">AR level</label><input id="el" type="number" inputmode="decimal" step="0.1" min="0"></div><div><label for="ep">AR points</label><input id="ep" type="number" inputmode="decimal" step="0.5" min="0"></div></div>
 <label class="check"><input id="ex" type="checkbox">Restricted section</label>
+<details id="edet"><summary>Edit book details</summary>
+<label for="dt">Title</label><input id="dt" autocapitalize="words">
+<label for="dst">Subtitle</label><input id="dst">
+<label for="da">Author</label><input id="da" autocapitalize="words">
+<div class="two"><div><label for="dse">Series</label><input id="dse" autocapitalize="words"></div><div><label for="dsi">Number in series</label><input id="dsi" type="number" inputmode="decimal" step="0.5" min="0"></div></div>
+<div class="two"><div><label for="dpu">Publisher</label><input id="dpu"></div><div><label for="dpd">Published</label><input id="dpd"></div></div>
+<div class="two"><div><label for="dpg">Pages</label><input id="dpg" type="number" inputmode="numeric" min="1"></div><div><label for="dis">ISBN</label><input id="dis" inputmode="numeric"></div></div>
+<label for="dsu">Subjects (separate with commas)</label><input id="dsu">
+<label for="dco">Cover image address</label><input id="dco" type="url" inputmode="url">
+<label for="dde">Description</label><textarea id="dde" rows="5"></textarea>
+<button id="dfill" onclick="fillBook()" style="margin-top:.75rem">Fill in missing details</button>
+</details>
 <div class="row acts"><button class="danger" onclick="del()">Delete</button><span style="flex:1"></span><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveEdit()">Save</button></div>
 </dialog>
 
@@ -124,7 +147,7 @@ input[type=file]{padding:.5rem}
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
 const store={get:k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
-let tab='shelves',shelf=null,sort='title',shelves=[],people=[],person=store.get('person'),tok=store.get('tok'),cover='',editing=null,editingShelf=null,lastQ='',scanner=null,findTimer=0;
+let tab='shelves',shelf=null,sort='title',shelves=[],people=[],person=store.get('person'),tok=store.get('tok'),editing=null,editingShelf=null,lastQ='',scanner=null,findTimer=0,found={},results=[];
 const open=()=>tok&&+tok.split('.')[0]>Date.now()/1000;
 const setTok=t=>{tok=t;store.set('tok',t)};
 async function api(p,o={}){
@@ -144,7 +167,15 @@ function ask({title,label,value='',pin=false,ok='OK'}){
 const go=t=>{tab=t;shelf=null;render();scrollTo(0,0)};
 const pq=(pre='?')=>person?pre+'person_id='+person:'';
 const setPerson=v=>{person=v;store.set('person',v);shelf=null;render()};
-const sorted=a=>[...a].sort((x,y)=>sort==='added'?y.id-x.id:sort==='author'?x.authors.localeCompare(y.authors)||x.title.localeCompare(y.title):x.title.localeCompare(y.title));
+const byTitle=(x,y)=>x.title.localeCompare(y.title);
+const SORTS={title:byTitle,author:(x,y)=>x.authors.localeCompare(y.authors)||byTitle(x,y),
+  series:(x,y)=>(!x.series)-(!y.series)||x.series.localeCompare(y.series)||(x.series_index??0)-(y.series_index??0)||byTitle(x,y),
+  added:(x,y)=>y.id-x.id};
+const sorted=a=>[...a].sort(SORTS[sort]||byTitle);
+const seriesText=b=>b.series?b.series+(b.series_index!=null?' #'+b.series_index:''):'';
+function infoHtml(b){
+  const facts=[b.publisher,b.published,b.pages?b.pages+' pages':''].filter(Boolean).join(' · ');
+  return `<div class="info">${b.cover?`<img src="${esc(b.cover)}" alt="">`:''}<div><b>${esc(b.title)}</b>${b.subtitle?`<div>${esc(b.subtitle)}</div>`:''}<div class="mut">${esc(b.authors)}</div>${b.series?`<div class="mut">${esc(seriesText(b))}</div>`:''}${facts?`<div class="mut">${esc(facts)}</div>`:''}</div></div>`}
 const opts=sel=>shelves.map(s=>`<option value="${s.id}" ${s.id==sel?'selected':''}>${esc(s.name)}${s.person?' ('+esc(s.person)+')':''}</option>`).join('')+`<option value="w" ${sel==='w'?'selected':''}>Wish list</option>`;
 const personOpts=(sel,none)=>`<option value="">${none}</option>`+people.map(p=>`<option value="${p.id}" ${p.id==sel?'selected':''}>${esc(p.name)}</option>`).join('');
 const num=v=>v===''?null:+v;
@@ -156,7 +187,7 @@ makeRate('er','★','star','star');makeRate('es','🌶','','pepper');
 
 function card(b,showShelf){
   const img=b.cover?`<img src="${esc(b.cover)}" alt="" loading="lazy">`:`<div class="ph">${esc(b.title)}</div>`;
-  return `<div class="book" role="button" tabindex="0" onclick="edit(${b.id})" onkeydown="if(event.key==='Enter')edit(${b.id})">${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.rating?'<br><span class="star on">'+'★'.repeat(b.rating)+'</span>':''}${b.spicy?'<br><span class="hot">'+'🌶'.repeat(b.spicy)+'</span>':''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}</div>`}
+  return `<div class="book" role="button" tabindex="0" onclick="edit(${b.id})" onkeydown="if(event.key==='Enter')edit(${b.id})">${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.series?'<br><span class="mut">'+esc(seriesText(b))+'</span>':''}${b.rating?'<br><span class="star on">'+'★'.repeat(b.rating)+'</span>':''}${b.spicy?'<br><span class="hot">'+'🌶'.repeat(b.spicy)+'</span>':''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}</div>`}
 async function render(){
   document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tab));
   $('#lock').innerHTML=open()?'<span aria-hidden="true">🔓</span><span class="lbl"> Lock</span>':'<span aria-hidden="true">🔒</span><span class="lbl"> Restricted</span>';
@@ -172,12 +203,12 @@ async function render(){
   if(tab==='shelves'){
     const s=shelves.find(x=>x.id===shelf);if(!s){shelf=null;return render()}
     const bs=sorted(await api('/books?shelf_id='+shelf));
-    m.innerHTML=`<div class="row"><button onclick="shelf=null;render()">‹ Shelves</button><span style="display:flex;gap:.5rem"><select aria-label="Sort by" onchange="sort=this.value;render()" style="width:auto">${[['title','Title'],['author','Author'],['added','Newest']].map(([v,l])=>`<option value="${v}" ${v===sort?'selected':''}>${l}</option>`).join('')}</select><button onclick="openShelf(${s.id})">Edit</button></span></div><h2>${esc(s.name)}${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>This shelf is empty. Tap Add book.</p>'}</div>`;return}
+    m.innerHTML=`<div class="row"><button onclick="shelf=null;render()">‹ Shelves</button><span style="display:flex;gap:.5rem"><select aria-label="Sort by" onchange="sort=this.value;render()" style="width:auto">${[['title','Title'],['author','Author'],['series','Series'],['added','Newest']].map(([v,l])=>`<option value="${v}" ${v===sort?'selected':''}>${l}</option>`).join('')}</select><button onclick="openShelf(${s.id})">Edit</button></span></div><h2>${esc(s.name)}${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>This shelf is empty. Tap Add book.</p>'}</div>`;return}
   if(tab==='wish'){
     const bs=sorted(await api('/books?wishlist=1'+pq('&')));
     m.innerHTML=`<h2>Wish list</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>Nothing on the wish list yet.</p>'}</div>`;return}
   if(tab==='settings')return await renderSettings(m);
-  m.innerHTML=`<h2>Search</h2><input id="q" type="search" enterkeyhint="search" aria-label="Title, author or ISBN" placeholder="Title, author or ISBN" oninput="clearTimeout(findTimer);findTimer=setTimeout(find,250)" value="${esc(lastQ)}" style="margin-top:.75rem"><div id="res" class="shelf"></div>`;find()
+  m.innerHTML=`<h2>Search</h2><input id="q" type="search" enterkeyhint="search" aria-label="Search your library" placeholder="Title, author, series, subject or ISBN" oninput="clearTimeout(findTimer);findTimer=setTimeout(find,250)" value="${esc(lastQ)}" style="margin-top:.75rem"><div id="res" class="shelf"></div>`;find()
   }catch(e){fail(e)}}
 async function find(){
   const q=$('#q');if(!q)return;lastQ=q.value.trim();
@@ -188,17 +219,39 @@ async function find(){
 
 /* Settings */
 async function renderSettings(m){
-  const {set}=await api('/pin-status');
+  const [{set},src]=await Promise.all([api('/pin-status'),api('/sources')]);
   m.innerHTML=`<h2>Settings</h2>
   <h3>People</h3><p class="mut">Add the people in your household to give each their own shelves and wish list. Pick a person at the top to see only their books.</p>
   ${people.map(p=>`<div class="row item"><span>${esc(p.name)}</span><span style="display:flex;gap:.4rem"><button onclick="renamePerson(${p.id})">Rename</button><button class="danger" onclick="delPerson(${p.id})">Remove</button></span></div>`).join('')||'<p>No people yet.</p>'}
   <div class="row"><input id="np" placeholder="Name" aria-label="New person's name" autocapitalize="words" enterkeyhint="done" onkeydown="if(event.key==='Enter')addPerson()"><button onclick="addPerson()">Add</button></div>
+  <h3>Book details</h3><p class="mut">Where details come from when you scan or search. Open Library is free and always on. Google Books is free too, but needs its own key to work reliably. ISBNdb is a paid service that knows more books; with a key it's asked first.</p>
+  ${src.map(sourceRow).join('')}
+  <p class="mut" style="margin-top:1rem">Books added before now, or by hand with an ISBN, can have their covers, descriptions and other blanks filled in. Nothing you typed yourself is changed.</p>
+  <button id="fillAll" onclick="fillAll()">Fill in missing details</button> <span id="fillp" class="mut" role="status"></span>
   <h3>Restricted section</h3><p class="mut">${set?'A PIN is set. Entering it opens the restricted section for a while, then it locks again.':'Set a PIN before marking any book as restricted.'}</p>
   <button onclick="changePin(${set})">${set?'Change PIN':'Set PIN'}</button>
   <h3>Backup</h3><p class="mut">${set?'Downloads include restricted books, so they need your PIN. ':''}The JSON file can be restored here later. The CSV opens in a spreadsheet.</p>
   <div class="row wrap"><button onclick="dl('/export.json')">Backup (JSON)</button><button onclick="dl('/export.csv')">Spreadsheet (CSV)</button><button onclick="dl('/backup.db')">Database file</button></div>
   <label for="imp">Restore from a JSON backup</label><input type="file" id="imp" accept=".json,application/json" onchange="restore(this)">
   <p class="mut">Restoring replaces every shelf, book and person with what's in the file. The server keeps a copy of the current data first.</p>`}
+const KEY_HELP={isbndb:'Get a key at isbndb.com (paid plans).',google:'Free: create an API key in Google Cloud Console and turn on the Books API for it.'};
+function sourceRow(s){
+  const state=s.enabled?(s.key_source?'On, with key':'On'):'Off, needs a key';
+  let html=`<div class="item"><div class="row" style="margin:0;min-height:44px"><b style="font-weight:600">${esc(s.name)}</b><span class="mut" style="padding-right:.5rem">${state}${s.key_source==='env'?' (set on the server)':''}</span></div>`;
+  if(KEY_HELP[s.id]&&s.key_source!=='env')html+=`<p class="mut" style="margin:.25rem 0">${KEY_HELP[s.id]}</p><div class="row" style="margin:.25rem 0"><input id="key-${s.id}" type="password" autocomplete="off" aria-label="${esc(s.name)} API key" placeholder="${s.key_source?'Saved. Type a new key to replace it':'Paste the API key'}"><button onclick="saveKey('${s.id}')">Save</button></div>${s.key_source?`<button class="danger" style="margin:.25rem 0 .5rem" onclick="saveKey('${s.id}',true)">Remove key</button>`:''}`;
+  return html+'</div>'}
+async function saveKey(id,remove){
+  const key=remove?'':$('#key-'+id).value.trim();
+  if(!remove&&!key)return toast('Paste the API key first',true);
+  if(remove&&!confirm('Remove this key?'))return;
+  try{toast(remove?'Removing…':'Checking the key…');await api('/sources/'+id,{method:'PUT',body:{key}});toast(remove?'Key removed':'Key saved');render()}catch(e){fail(e)}}
+async function fillAll(){
+  const btn=$('#fillAll'),p=$('#fillp');let after=0,checked=0,filled=0;btn.disabled=true;
+  try{
+    for(;;){const r=await api('/books/fill-missing?after_id='+after,{method:'POST'});checked+=r.checked;filled+=r.filled;after=r.last_id;
+      p.textContent=`Checked ${checked} book${checked===1?'':'s'}, filled in ${filled}…`;if(r.done)break}
+    p.textContent=checked?`Done. Checked ${checked} book${checked===1?'':'s'} and filled in details for ${filled}.`:'Nothing to fill in: every book with an ISBN already has its details.'
+  }catch(e){fail(e);p.textContent=''}finally{if(btn.isConnected)btn.disabled=false}}
 function addPerson(){const n=$('#np').value.trim();if(n)api('/people',{method:'POST',body:{name:n}}).then(()=>{toast(n+' added');render()},fail)}
 async function renamePerson(id){const p=people.find(x=>x.id===id),n=await ask({title:'Rename',label:'Name',value:p.name,ok:'Save'});if(n&&n.trim())api('/people/'+id,{method:'PATCH',body:{name:n}}).then(render,fail)}
 function delPerson(id){const p=people.find(x=>x.id===id);if(confirm(`Remove ${p.name}? Their shelves and books stay, and become shared.`))api('/people/'+id,{method:'DELETE'}).then(render,fail)}
@@ -237,34 +290,66 @@ function delShelf(){if(confirm('Delete this shelf?'))api('/shelves/'+editingShel
 /* Books */
 function openAdd(){
   $('#sh').innerHTML=opts(shelf||(tab==='wish'?'w':''));$('#ap').innerHTML=personOpts(person,'Nobody in particular');
-  ['isbn','t','a'].forEach(i=>$('#'+i).value='');cover='';$('#add').showModal()}
-async function lookup(){
-  const isbn=$('#isbn').value.trim();if(!isbn)return toast('Type or scan an ISBN first',true);
-  try{const d=await api('/lookup/'+encodeURIComponent(isbn));$('#t').value=d.title;$('#a').value=d.authors;cover=d.cover;toast('Found: '+d.title)}
-  catch(e){toast('No match found. Enter the title and author by hand.',true)}}
+  ['isbn','t','a'].forEach(i=>$('#'+i).value='');found={};results=[];$('#results').innerHTML=$('#preview').innerHTML='';$('#add').showModal()}
+const isbnOf=v=>{const d=String(v||'').replace(/[^\dXx]/g,'');return /^[\d\s-]+[\dXx]?$/.test(String(v).trim())&&(d.length===10||d.length===13)?d:''};
+async function findBook(){
+  const v=$('#isbn').value.trim();if(!v)return toast('Type an ISBN, or a title and author',true);
+  if(isbnOf(v))return lookup(v);
+  $('#results').innerHTML='<p class="mut">Searching…</p>';$('#preview').innerHTML='';
+  try{
+    results=(await api('/lookup?q='+encodeURIComponent(v))).results;
+    $('#results').innerHTML=results.length?'<p class="mut" style="margin:.75rem 0 0">Tap the right one:</p>'+results.map((r,i)=>`<button onclick="pick(${i})">${r.cover?`<img class="thumb" src="${esc(r.cover)}" alt="">`:'<span class="thumb"></span>'}<span><b>${esc(r.title)}</b>${r.subtitle?': '+esc(r.subtitle):''}<br><span class="mut">${esc(r.authors)}${r.published?' · '+esc(r.published.slice(0,4)):''}</span></span></button>`).join(''):'<p class="mut">Nothing found. Enter the details by hand below.</p>'
+  }catch(e){$('#results').innerHTML='';fail(e)}}
+async function pick(i){
+  let r=results[i];
+  // A search result is a summary; with an ISBN, fetch the full details.
+  if(r.isbn){try{const full=await api('/lookup/'+encodeURIComponent(r.isbn));r={...r,...Object.fromEntries(Object.entries(full).filter(([k,v])=>v))}}catch(e){}}
+  applyFound(r)}
+function applyFound(d){found=d;$('#results').innerHTML='';$('#t').value=d.title||'';$('#a').value=d.authors||'';$('#preview').innerHTML=infoHtml(d)}
+async function lookup(v){
+  try{const d=await api('/lookup/'+encodeURIComponent(v));applyFound(d);toast('Found: '+d.title)}
+  catch(e){found={isbn:isbnOf(v)};$('#preview').innerHTML='';toast(e.message==='No match found'?'No match found. Enter the title and author by hand.':e.message,true)}}
 async function stopScan(){const s=scanner;scanner=null;$('#reader').innerHTML='';if(s){try{await s.stop()}catch(e){}}}
 async function scan(){
   if(scanner)return stopScan();
   try{
     if(!window.Html5Qrcode)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';s.onload=ok;s.onerror=no;document.head.append(s)});
     scanner=new Html5Qrcode('reader');
-    await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:120},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13]},async t=>{await stopScan();navigator.vibrate?.(60);$('#isbn').value=t;lookup()})
+    await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:120},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13]},async t=>{await stopScan();navigator.vibrate?.(60);$('#isbn').value=t;lookup(t)})
   }catch(e){scanner=null;$('#reader').innerHTML='';toast('The camera could not start. Scanning needs HTTPS and camera permission. You can type the ISBN instead.',true)}}
 $('#add').addEventListener('close',stopScan);
+const EXTRA=['subtitle','description','publisher','published','pages','subjects','series','series_index','language'];
 function saveNew(){
   const v=$('#sh').value,w=v==='w';
   if(!$('#t').value.trim())return toast('Enter a title',true);
   if(!w&&!v)return toast('Create a shelf first, or choose Wish list',true);
-  api('/books',{method:'POST',body:{isbn:$('#isbn').value,title:$('#t').value,authors:$('#a').value,cover,wishlist:w,shelf_id:w?null:+v,person_id:num($('#ap').value)}}).then(()=>{$('#add').close();toast('Added '+$('#t').value.trim());render()},fail)}
-async function edit(id){
+  const body={title:$('#t').value,authors:$('#a').value,isbn:found.isbn||isbnOf($('#isbn').value),cover:found.cover||'',wishlist:w,shelf_id:w?null:+v,person_id:num($('#ap').value)};
+  EXTRA.forEach(k=>{if(found[k]!=null&&found[k]!=='')body[k]=found[k]});
+  api('/books',{method:'POST',body}).then(()=>{$('#add').close();toast('Added '+$('#t').value.trim());render()},fail)}
+/* The "Edit book details" fields, by input id. */
+const DETAILS={dt:'title',dst:'subtitle',da:'authors',dse:'series',dsi:'series_index',dpu:'publisher',dpd:'published',dpg:'pages',dis:'isbn',dsu:'subjects',dco:'cover',dde:'description'};
+const NUMERIC=['series_index','pages'];
+async function edit(id,keepOpen){
   try{const b=await api('/books/'+id);editing=b;
-    $('#et').textContent=b.title;$('#ea').textContent=b.authors;$('#esh').innerHTML=opts(b.wishlist?'w':b.shelf_id);$('#epp').innerHTML=personOpts(b.person_id,'Nobody in particular');
+    const tags=b.subjects?`<div class="tags">${b.subjects.split(',').map(s=>s.trim()).filter(Boolean).map(s=>`<span class="tag">${esc(s)}</span>`).join('')}</div>`:'';
+    $('#einfo').innerHTML=infoHtml(b)+tags+(b.description?`<p class="desc" title="Tap to show all" onclick="this.classList.toggle('open')">${esc(b.description)}</p>`:'');
+    $('#esh').innerHTML=opts(b.wishlist?'w':b.shelf_id);$('#epp').innerHTML=personOpts(b.person_id,'Nobody in particular');
     setRate('er',b.rating||0);setRate('es',b.spicy||0);$('#ev').value=b.review;
-    $('#el').value=b.ar_level??'';$('#ep').value=b.ar_points??'';$('#ex').checked=!!b.restricted;$('#ed').showModal();$('#ed').scrollTop=0}
+    $('#el').value=b.ar_level??'';$('#ep').value=b.ar_points??'';$('#ex').checked=!!b.restricted;
+    for(const [i,k] of Object.entries(DETAILS))$('#'+i).value=b[k]??'';
+    $('#dfill').hidden=!b.isbn;$('#edet').open=!!keepOpen;
+    if(!$('#ed').open){$('#ed').showModal();$('#ed').scrollTop=0}}
+  catch(e){fail(e)}}
+async function fillBook(){
+  try{const {filled}=await api('/books/'+editing.id+'/fill',{method:'POST'});
+    toast(filled.length?`Filled in ${filled.length} detail${filled.length>1?'s':''}`:'Nothing new found');if(filled.length)edit(editing.id,true)}
   catch(e){fail(e)}}
 function saveEdit(){
   const v=$('#esh').value,w=v==='w';
-  api('/books/'+editing.id,{method:'PATCH',body:{wishlist:w,shelf_id:w?null:+v,person_id:num($('#epp').value),rating:+$('#er').dataset.v||0,spicy:+$('#es').dataset.v||0,review:$('#ev').value,ar_level:num($('#el').value),ar_points:num($('#ep').value),restricted:$('#ex').checked}}).then(()=>{$('#ed').close();toast('Saved');render()},fail)}
+  const body={wishlist:w,shelf_id:w?null:+v,person_id:num($('#epp').value),rating:+$('#er').dataset.v||0,spicy:+$('#es').dataset.v||0,review:$('#ev').value,ar_level:num($('#el').value),ar_points:num($('#ep').value),restricted:$('#ex').checked};
+  for(const [i,k] of Object.entries(DETAILS)){const x=$('#'+i).value.trim();body[k]=NUMERIC.includes(k)?num(x):x}
+  if(!body.title)return toast('Enter a title',true);
+  api('/books/'+editing.id,{method:'PATCH',body}).then(()=>{$('#ed').close();toast('Saved');render()},fail)}
 function del(){if(confirm('Delete this book?'))api('/books/'+editing.id,{method:'DELETE'}).then(()=>{$('#ed').close();toast('Deleted');render()},fail)}
 async function lockBtn(){
   if(open()){setTok('');toast('Restricted section locked');return render()}

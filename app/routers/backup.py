@@ -21,8 +21,12 @@ COLUMNS = {
     "people": ["id", "name"],
     "shelves": ["id", "name", "person_id"],
     "books": ["id", "isbn", "title", "authors", "cover", "shelf_id", "person_id", "wishlist", "restricted",
-              "rating", "spicy", "review", "ar_level", "ar_points"],
+              "rating", "spicy", "review", "ar_level", "ar_points", "subtitle", "description", "publisher",
+              "published", "pages", "subjects", "series", "series_index", "language"],
 }
+CSV_COLUMNS = ["title", "subtitle", "authors", "series", "series_index", "isbn", "publisher", "published", "pages",
+               "subjects", "language", "shelf", "person", "wishlist", "restricted", "rating", "spicy", "ar_level",
+               "ar_points", "review", "description"]
 
 
 def _attachment(ext: str) -> dict:
@@ -39,13 +43,11 @@ def export_json():
 
 @router.get("/export.csv")
 def export_csv():
-    rows = db.rows("SELECT b.title, b.authors, b.isbn, s.name AS shelf, p.name AS person, b.wishlist, "
-                   "b.restricted, b.rating, b.spicy, b.ar_level, b.ar_points, b.review FROM books b "
+    rows = db.rows("SELECT b.*, s.name AS shelf, p.name AS person FROM books b "
                    "LEFT JOIN shelves s ON s.id=b.shelf_id LEFT JOIN people p ON p.id=b.person_id "
                    "ORDER BY b.title COLLATE NOCASE")
     out = io.StringIO()
-    w = csv.DictWriter(out, fieldnames=["title", "authors", "isbn", "shelf", "person", "wishlist", "restricted",
-                                        "rating", "spicy", "ar_level", "ar_points", "review"])
+    w = csv.DictWriter(out, fieldnames=CSV_COLUMNS, extrasaction="ignore")
     w.writeheader()
     w.writerows(rows)
     # The BOM makes Excel read the file as UTF-8.
@@ -77,8 +79,10 @@ def import_json(data: dict):
                 c.execute(f"DELETE FROM {table}")
             for table, cols in COLUMNS.items():
                 for r in data[table]:
-                    c.execute(f"INSERT INTO {table}({', '.join(cols)}) VALUES({', '.join('?' * len(cols))})",
-                              [r.get(k) for k in cols])
+                    # Only the columns the file has, so backups from older versions get the defaults.
+                    keys = [k for k in cols if k in r]
+                    c.execute(f"INSERT INTO {table}({', '.join(keys)}) VALUES({', '.join('?' * len(keys))})",
+                              [r[k] for k in keys])
     except sqlite3.Error as e:
         raise HTTPException(400, f"The backup couldn't be restored, so nothing was changed: {e}")
     return {table: len(data[table]) for table in COLUMNS}
