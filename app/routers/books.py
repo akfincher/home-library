@@ -142,7 +142,8 @@ def add_book(b: BookIn):
 
 @router.get("/{bid}")
 def get_book(bid: int, is_unlocked: bool = Depends(unlocked)):
-    return _visible(bid, is_unlocked)
+    from .reading import mine_for  # (reading builds on this module)
+    return {**_visible(bid, is_unlocked), **mine_for(bid)}
 
 
 @router.patch("/{bid}")
@@ -186,6 +187,7 @@ def patch_book(bid: int, body: BookPatch, is_unlocked: bool = Depends(unlocked))
 def delete_book(bid: int, is_unlocked: bool = Depends(unlocked)):
     book = _visible(bid, is_unlocked)
     db.run("DELETE FROM loans WHERE book_id=?", (bid,))
+    db.run("DELETE FROM reads WHERE book_id=?", (bid,))
     db.run("DELETE FROM books WHERE id=?", (bid,))
     log(f"Deleted {q(book['title'])} from {_where(book['shelf_id'], book['wishlist'])}", book)
     return {"ok": True}

@@ -31,6 +31,7 @@ COLUMNS = {
               "rating", "spicy", "review", "ar_level", "ar_points", "subtitle", "description", "publisher",
               "published", "pages", "subjects", "series", "series_index", "language", "position"],
 }
+READ_COLUMNS = ["book_id", "user_id", "status", "page", "started_on", "finished_on", "updated_at"]
 LOAN_COLUMNS = ["book_id", "borrower", "note", "lent_at", "due", "returned_at"]
 CSV_COLUMNS = ["title", "subtitle", "authors", "series", "series_index", "isbn", "publisher", "published", "pages",
                "subjects", "language", "shelf", "person", "wishlist", "restricted", "rating", "spicy", "ar_level",
@@ -47,6 +48,7 @@ def export_json():
     for table, cols in COLUMNS.items():
         data[table] = db.rows(f"SELECT {', '.join(cols)} FROM {table} WHERE library_id=? ORDER BY id", (lib(),))
     data["loans"] = db.rows(f"SELECT {', '.join(LOAN_COLUMNS)} FROM loans WHERE library_id=? ORDER BY id", (lib(),))
+    data["reads"] = db.rows(f"SELECT {', '.join(READ_COLUMNS)} FROM reads WHERE library_id=? ORDER BY id", (lib(),))
     return JSONResponse(data, headers=_attachment("json"))
 
 
@@ -93,7 +95,7 @@ def import_json(data: dict):
     try:
         with db.connect() as c:
             c.execute("UPDATE memberships SET person_id=NULL WHERE library_id=?", (library,))
-            for table in ("loans", "books", "shelves", "people"):
+            for table in ("reads", "loans", "books", "shelves", "people"):
                 c.execute(f"DELETE FROM {table} WHERE library_id=?", (library,))
             # Only the columns the file has, so backups from older versions get the defaults.
             pick = lambda table, r: {k: r[k] for k in COLUMNS[table] if k in r and k != "id"}
@@ -114,6 +116,13 @@ def import_json(data: dict):
                 if isinstance(r, dict) and books.get(r.get("book_id")) and r.get("borrower") and r.get("lent_at"):
                     _insert(c, "loans", {**{k: r.get(k) for k in LOAN_COLUMNS if k in r}, "library_id": library,
                                          "book_id": books[r["book_id"]], "due": r.get("due") or ""})
+            # Each person's reading, kept for people who are members of this library.
+            members = {m[0] for m in c.execute("SELECT user_id FROM memberships WHERE library_id=?", (library,))}
+            for r in data.get("reads") or []:
+                if (isinstance(r, dict) and books.get(r.get("book_id")) and r.get("user_id") in members
+                        and r.get("status") in ("reading", "finished", "dnf")):
+                    _insert(c, "reads", {**{k: r.get(k) for k in READ_COLUMNS if k in r}, "library_id": library,
+                                         "book_id": books[r["book_id"]], "updated_at": r.get("updated_at") or 0})
     except sqlite3.Error as e:
         raise HTTPException(400, f"The backup couldn't be restored, so nothing was changed: {e}")
     log(f"Restored a backup ({len(data['books'])} books, {len(data['shelves'])} shelves)")

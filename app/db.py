@@ -110,6 +110,15 @@ MIGRATIONS = [
     ALTER TABLE invites ADD COLUMN email TEXT NOT NULL DEFAULT '';
     ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT '';
     """,
+    # 10: each person's reading (currently reading, finished, did not finish) and their app theme.
+    """
+    CREATE TABLE reads(id INTEGER PRIMARY KEY, library_id INTEGER NOT NULL, book_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL, status TEXT NOT NULL, page INTEGER NOT NULL DEFAULT 0,
+      started_on TEXT NOT NULL DEFAULT '', finished_on TEXT NOT NULL DEFAULT '', updated_at REAL NOT NULL);
+    CREATE INDEX reads_user ON reads(user_id, library_id, status);
+    CREATE INDEX reads_book ON reads(book_id);
+    ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT '';
+    """,
 ]
 
 

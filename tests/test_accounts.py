@@ -36,7 +36,7 @@ def add_member(owner):
 # First-time setup
 
 def test_everything_needs_setup_then_login(c):
-    assert c.get("/api/auth/status").json() == {"setup_needed": True, "signup_open": False, "user": None}
+    assert c.get("/api/auth/status").json() == {"setup_needed": True, "signup_open": False, "notice": None, "user": None}
     assert c.get("/api/books").status_code == 401
     assert c.get("/").status_code == 200 and c.get("/static/manifest.json").status_code == 200
     assert c.get("/api/about").status_code == 200

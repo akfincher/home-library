@@ -20,6 +20,9 @@ COOKIE = "hl_session"
 SESSION_DAYS = 30
 MIN_PASSWORD = 8
 ROLES = ("admin", "member")
+# The app's looks; each account picks one (blank means the classic look).
+THEMES = ("classic", "library", "parchment", "floral", "garden", "geometric", "steampunk", "ocean", "midnight",
+          "sunshine")
 _SCRYPT = {"n": 2 ** 14, "r": 8, "p": 1}
 
 # One limiter per username tried: 5 free wrong passwords, then a doubling wait.
@@ -84,7 +87,7 @@ def libraries_of(user_id: int) -> list[dict]:
 def public(user: dict) -> dict:
     """What the app is told about the logged-in user."""
     return {"id": user["id"], "username": user["username"], "site_admin": bool(user["site_admin"]),
-            "can_invite": bool(user["site_admin"] or user["can_invite"]),
+            "can_invite": bool(user["site_admin"] or user["can_invite"]), "theme": user["theme"] or "classic",
             "library": user.get("library"), "libraries": user.get("libraries", [])}
 
 

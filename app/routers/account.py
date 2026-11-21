@@ -17,6 +17,19 @@ class Credentials(BaseModel):
     password: str = Field(max_length=500)
 
 
+class Theme(BaseModel):
+    theme: str = Field(max_length=30)
+
+
+@router.put("/theme")
+def set_theme(b: Theme, user: dict = Depends(auth.current_user)):
+    """Your theme, kept with your account so it follows you to every device."""
+    if b.theme not in auth.THEMES:
+        raise HTTPException(400, "There's no theme with that name.")
+    db.run("UPDATE users SET theme=? WHERE id=?", (b.theme, user["id"]))
+    return {"ok": True}
+
+
 class NewPassword(BaseModel):
     current: str = Field(max_length=500)
     password: str = Field(max_length=500)
@@ -30,9 +43,10 @@ def _me(token: str) -> dict:
 def status(request: Request):
     """Public: whether the first account still needs creating, whether sign-up
     (with an invite code) is possible, and who's logged in (with their libraries)."""
+    from .server import current_notice
     user = auth.user_for(request.cookies.get(auth.COOKIE))
     return {"setup_needed": not auth.has_users(), "signup_open": auth.has_users(),
-            "user": auth.public(user) if user else None}
+            "notice": current_notice(), "user": auth.public(user) if user else None}
 
 
 @router.post("/setup")
