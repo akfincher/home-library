@@ -2,15 +2,20 @@
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 import os
 from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, db, security, storage
-from .routers import backup, books, lookup, organize, people, pin, shelves
+from . import auth, config, db, security, storage
+from .routers import account, backup, books, lookup, organize, people, pin, shelves, users
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
+# API paths anyone may use without logging in.
+PUBLIC_API = {"/api/auth/status", "/api/auth/login", "/api/auth/setup", "/api/about"}
+UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 def create_app(db_path: str | None = None) -> FastAPI:
@@ -18,16 +23,34 @@ def create_app(db_path: str | None = None) -> FastAPI:
     async def lifespan(_app):
         db.init(db_path or config.DB_PATH)
         security.reset()
+        auth.reset()
         yield
 
-    app = FastAPI(title="Home Library", lifespan=lifespan)
-    for r in (pin, people, shelves, books, lookup, backup, organize):
+    app = FastAPI(title="Home Library", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+
+    @app.middleware("http")
+    async def require_login(request: Request, call_next):
+        # Refuse changes sent from another website (cross-site request forgery).
+        origin = request.headers.get("origin")
+        if request.method in UNSAFE and origin:
+            hosts = {request.headers.get("host"), request.headers.get("x-forwarded-host")}
+            if urlsplit(origin).netloc not in hosts:
+                return JSONResponse({"detail": "Request from another site refused."}, 403)
+        path = request.url.path
+        if path.startswith("/api/") and path not in PUBLIC_API:
+            user = await run_in_threadpool(auth.user_for, request.cookies.get(auth.COOKIE))
+            if not user:
+                return JSONResponse({"detail": "Please log in."}, 401)
+            request.state.user = user
+        return await call_next(request)
+
+    for r in (account, users, pin, people, shelves, books, lookup, backup, organize):
         app.include_router(r.router)
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
     @app.get("/", include_in_schema=False)
     def index():
-        return FileResponse(os.path.join(STATIC, "index.html"))
+        return FileResponse(os.path.join(STATIC, "index.html"), headers={"Cache-Control": "no-cache"})
 
     @app.get("/api/about")
     def about():

@@ -8,7 +8,7 @@ from collections import Counter
 
 from fastapi import APIRouter, Depends
 
-from .. import db
+from .. import auth, db
 from ..schemas import OrganizeIn
 from ..security import require_admin, unlocked
 from .people import ensure_person
@@ -117,7 +117,7 @@ def preview(o: OrganizeIn, is_unlocked: bool = Depends(unlocked)):
                        for (name, _), bs in groups]}
 
 
-@router.post("/apply", dependencies=[Depends(require_admin)])
+@router.post("/apply", dependencies=[Depends(auth.require_owner), Depends(require_admin)])
 def apply(o: OrganizeIn, is_unlocked: bool = Depends(unlocked)):
     books, groups = _plan(o, is_unlocked)
     if not books:

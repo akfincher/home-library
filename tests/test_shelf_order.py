@@ -7,12 +7,13 @@ from fastapi.testclient import TestClient
 
 from app import db
 from app.main import create_app
+from conftest import log_in_as_owner
 
 
 @pytest.fixture
 def c(tmp_path):
     with TestClient(create_app(str(tmp_path / "library.db"))) as client:
-        yield client
+        yield log_in_as_owner(client)
 
 
 def shelf(c, name, person_id=None):

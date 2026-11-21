@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .. import db, metadata
+from .. import auth, db, metadata
 from ..security import require_admin
 
 router = APIRouter(prefix="/api")
@@ -40,7 +40,7 @@ class Key(BaseModel):
     key: str = Field("", max_length=200)
 
 
-@router.put("/sources/{source}", dependencies=[Depends(require_admin)])
+@router.put("/sources/{source}", dependencies=[Depends(auth.require_owner), Depends(require_admin)])
 def set_key(source: str, b: Key):
     """Checks the key with the source before saving it. An empty key removes it."""
     if source not in metadata.KEYED:

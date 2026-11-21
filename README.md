@@ -17,6 +17,22 @@ A free, self-hosted web app for cataloging a home bookshelf. One container, SQLi
 ## On your phone
 The app is designed for phones first. Open it in your phone's browser, then add it to your home screen (iPhone: Share > Add to Home Screen; Android: menu > Add to Home screen / Install app). It then opens full screen like an app, with its own icon.
 
+## Accounts and logging in
+Everyone logs in with their own account. The first time you open the app it asks you to create the **owner** account; after that, owners add accounts for everyone else in Settings.
+
+- **Members** can add, edit, arrange and search books and shelves.
+- **Owners** can also add and remove accounts, set the restricted-section PIN, add API keys, organize the whole library and download or restore backups.
+- An account can be linked to a person, so it starts out showing that person's books.
+- You stay logged in on each device for 30 days after you last used it. Changing your password logs out your other devices.
+- After 5 wrong passwords for an account, the app makes you wait before trying again, doubling each time up to 15 minutes.
+
+**Locked out?** Open a shell in the container (on TrueNAS: Apps > home-library > the shell icon next to the container) and run:
+
+    python -m app.reset_password            # lists the accounts
+    python -m app.reset_password USERNAME   # gives that account a new random password
+
+**Reaching it from outside your home:** put it behind a reverse proxy with HTTPS, such as Nginx Proxy Manager, on its own subdomain. Login cookies are then sent only over HTTPS. Create the owner account before you open it to the internet, because until then anyone who finds it could create it.
+
 ## Run with Docker
 
     docker compose up -d
@@ -81,7 +97,6 @@ Code layout: `app/db.py` (database and migrations), `app/security.py` (PIN and u
 
 ## Notes
 - Camera scanning only works over HTTPS (or localhost). Put a reverse proxy with a certificate in front of the app; manual ISBN entry works either way.
-- People are profiles, not logins: anyone who can open the app can see and edit everything outside the restricted section. Keep it on your home network or behind a VPN.
 
 ## License
 Copyright (C) 2026 Aaron Fincher.

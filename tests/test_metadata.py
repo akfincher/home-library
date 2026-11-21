@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app import metadata
 from app.main import create_app
+from conftest import log_in_as_owner
 
 ISBN = "9780441172719"
 
@@ -60,7 +61,7 @@ def web(monkeypatch):
 @pytest.fixture
 def c(tmp_path):
     with TestClient(create_app(str(tmp_path / "library.db"))) as client:
-        yield client
+        yield log_in_as_owner(client)
 
 
 def test_isbn_cleaning():

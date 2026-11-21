@@ -42,6 +42,7 @@ def remove_person(pid: int):
     with db.connect() as c:
         c.execute("UPDATE shelves SET person_id=NULL WHERE person_id=?", (pid,))
         c.execute("UPDATE books SET person_id=NULL WHERE person_id=?", (pid,))
+        c.execute("UPDATE users SET person_id=NULL WHERE person_id=?", (pid,))
         if not c.execute("DELETE FROM people WHERE id=?", (pid,)).rowcount:
             raise HTTPException(404, "Person not found")
     return {"ok": True}

@@ -50,6 +50,13 @@ MIGRATIONS = [
     ALTER TABLE shelves ADD COLUMN sort TEXT DEFAULT 'title';
     CREATE INDEX books_shelf_position ON books(shelf_id, position);
     """,
+    # 5: user accounts and login sessions. Only a hash of each session token is stored.
+    """
+    CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'member', person_id INTEGER REFERENCES people(id));
+    CREATE TABLE sessions(token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires REAL NOT NULL);
+    CREATE INDEX sessions_user ON sessions(user_id);
+    """,
 ]
 
 

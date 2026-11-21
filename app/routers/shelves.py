@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 from fastapi import APIRouter, Depends, HTTPException
 
-from .. import db
+from .. import auth, db
 from ..schemas import ShelfIn, ShelfOrder, ShelfSort
 from ..security import require_admin, unlocked
 from .people import ensure_person
@@ -81,7 +81,7 @@ def delete_shelf(sid: int):
     return {"ok": True}
 
 
-@router.post("/delete-empty", dependencies=[Depends(require_admin)])
+@router.post("/delete-empty", dependencies=[Depends(auth.require_owner), Depends(require_admin)])
 def delete_empty():
     """Removes every shelf with no books at all on it (restricted ones included)."""
     cur = db.run("DELETE FROM shelves WHERE id NOT IN (SELECT shelf_id FROM books WHERE shelf_id IS NOT NULL)")

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app import db
 from app.main import create_app
+from conftest import log_in_as_owner
 
 
 @pytest.fixture
@@ -20,7 +21,7 @@ def make_client(tmp_path):
 @pytest.fixture
 def c(make_client):
     with make_client() as client:
-        yield client
+        yield log_in_as_owner(client)
 
 
 def unlock(c, pin="1234"):
@@ -39,6 +40,7 @@ def test_upgrades_a_database_from_the_original_app(tmp_path, make_client):
     old.close()
 
     with make_client(path) as c:
+        log_in_as_owner(c)
         books = c.get("/api/books").json()
         assert [(b["title"], b["shelf"], b["rating"], b["person_id"]) for b in books] == [("Dune", "Living room", 5, None)]
 

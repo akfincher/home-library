@@ -73,6 +73,10 @@ input[type=file]{padding:.5rem}
 @media(max-width:699px){.arrbar{bottom:calc(var(--nav) + .75rem + var(--sb))}}
 .mv{display:flex;justify-content:space-between;margin-bottom:.25rem}.mv button{min-height:36px;min-width:40px;padding:0}
 .groups{list-style:none;padding:0;margin:.5rem 0}.groups li{border-bottom:1px solid var(--line);padding:.5rem 0}
+#gate[hidden]{display:none}
+#gate{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:1.5rem 1rem}
+#gate form{width:min(100%,360px)}#gate h1{margin:.5rem 0 .25rem}
+body.gated>*:not(#gate){display:none!important}
 .note{background:var(--bg);border-left:4px solid var(--hot);border-radius:6px;padding:.6rem .8rem;margin:.75rem 0;font-size:.9rem}
 .results>button{display:flex;gap:.75rem;align-items:center;width:100%;text-align:left;margin:.4rem 0;padding:.5rem}
 .thumb{width:44px;aspect-ratio:2/3;object-fit:cover;flex:none;border-radius:2px;background:var(--line)}
@@ -100,6 +104,15 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
   .acts{margin:1rem -1rem 0;padding:.75rem 1rem calc(.75rem + var(--sb))}
 }
 </style></head><body>
+<div id="gate" hidden><form onsubmit="event.preventDefault();gateSubmit()">
+<img src="/static/icon-192.png" alt="" width="72" height="72">
+<h1>Home Library</h1><p id="gateMsg" class="mut"></p>
+<label for="gu">Username</label><input id="gu" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+<label for="gp">Password</label><input id="gp" type="password" autocomplete="current-password" required>
+<div id="gp2w" hidden><label for="gp2">Password again</label><input id="gp2" type="password" autocomplete="new-password"></div>
+<p id="gateErr" class="note" role="alert" hidden></p>
+<button class="p wide" id="gateBtn" style="margin-top:1.25rem">Log in</button>
+</form></div>
 <header><h1>Home Library</h1>
 <select id="who" aria-label="Whose books to show" onchange="setPerson(this.value)" hidden></select>
 <button id="lock" onclick="lockBtn()"></button></header>
@@ -165,6 +178,14 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <div class="row acts"><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" id="ogo" onclick="orgApply()">Organize</button></div>
 </dialog>
 
+<dialog id="ud" aria-labelledby="udT"><h2 id="udT"></h2>
+<div id="udNameW"><label for="udName">Username</label><input id="udName" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off"></div>
+<label for="udPw" id="udPwL">Password</label><input id="udPw" type="password" autocomplete="new-password">
+<label for="udRole">Account type</label><select id="udRole"><option value="member">Member: uses the library</option><option value="admin">Owner: also manages accounts, keys and backups</option></select>
+<label for="udPerson">Starts out showing the books of</label><select id="udPerson"></select>
+<div class="row acts"><button id="udDel" class="danger" onclick="removeUser()">Remove</button><span style="flex:1"></span><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveUser()">Save</button></div>
+</dialog>
+
 <dialog id="ask" aria-labelledby="askT"><form method="dialog"><h2 id="askT"></h2>
 <label for="askI" id="askL"></label><input id="askI" autocomplete="off">
 <div class="row acts"><button type="button" onclick="this.closest('dialog').close()">Cancel</button><button class="p" value="ok" id="askOk">OK</button></div>
@@ -179,15 +200,16 @@ const setTok=t=>{tok=t;store.set('tok',t)};
 async function api(p,o={}){
   const r=await fetch('/api'+p,{method:o.method||'GET',headers:{'Content-Type':'application/json','X-Unlock':open()?tok:''},body:o.body?JSON.stringify(o.body):undefined});
   const d=await r.json().catch(()=>({}));
+  if(r.status===401&&me){me=null;$('main').innerHTML='';showGate('login')}
   if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'Something went wrong');
   return d}
 let toastTimer=0;
 function toast(msg,err){const t=$('#toast');t.textContent=msg;t.className='show'+(err?' err':'');t.setAttribute('role',err?'alert':'status');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='',err?5000:3000)}
 const fail=e=>toast(e.message,true);
-function ask({title,label,value='',pin=false,ok='OK'}){
+function ask({title,label,value='',pin=false,password=false,ok='OK'}){
   const d=$('#ask'),i=$('#askI');
   $('#askT').textContent=title;$('#askL').textContent=label;$('#askOk').textContent=ok;
-  i.type=pin?'password':'text';i.inputMode=pin?'numeric':'text';i.autocapitalize=pin?'off':'words';i.value=value;
+  i.type=pin||password?'password':'text';i.inputMode=pin?'numeric':'text';i.autocapitalize=pin||password?'off':'words';i.value=value;
   d.returnValue='';d.showModal();i.focus();
   return new Promise(res=>d.addEventListener('close',()=>res(d.returnValue==='ok'?i.value:null),{once:true}))}
 const go=t=>{tab=t;shelf=null;arranging=false;render();scrollTo(0,0)};
@@ -229,7 +251,7 @@ async function render(){
   const m=$('main');
   try{
   if(tab==='shelves'&&!shelf){
-    m.innerHTML=`<div class="row"><h2>Shelves</h2><span style="display:flex;gap:.5rem"><button onclick="openOrganize()">Organize</button><button onclick="openShelf()">New shelf</button></span></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render();scrollTo(0,0)"><span>${esc(s.name)} <small class="mut">(${s.count})</small>${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</span></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
+    m.innerHTML=`<div class="row"><h2>Shelves</h2><span style="display:flex;gap:.5rem">${isOwner()?'<button onclick="openOrganize()">Organize</button>':''}<button onclick="openShelf()">New shelf</button></span></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render();scrollTo(0,0)"><span>${esc(s.name)} <small class="mut">(${s.count})</small>${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</span></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
   if(tab==='shelves'){
     const s=shelves.find(x=>x.id===shelf);if(!s){shelf=null;return render()}
     const bs=sorted(await api('/books?shelf_id='+shelf),s.sort);
@@ -254,8 +276,15 @@ async function find(){
 
 /* Settings */
 async function renderSettings(m){
-  const [{set},src,about]=await Promise.all([api('/pin-status'),api('/sources'),api('/about')]);
+  const owner=isOwner();
+  const [{set},src,about,users]=await Promise.all([api('/pin-status'),api('/sources'),api('/about'),owner?api('/users'):[]]);
+  accounts=users;
   m.innerHTML=`<h2>Settings</h2>
+  <h3>Your account</h3><p>Logged in as <b>${esc(me.username)}</b> <span class="tag">${owner?'Owner':'Member'}</span></p>
+  <div class="row wrap"><button onclick="changeMyPassword()">Change password</button><button onclick="logout()">Log out</button></div>
+  ${owner?`<h3>Accounts</h3><p class="mut">Everyone who uses the library gets their own login. Members can add and edit books and shelves. Owners can also manage accounts, keys, backups and the PIN.</p>
+  ${users.map(u=>`<button class="item" style="display:flex;justify-content:space-between;width:100%;text-align:left" onclick="openUser(${u.id})"><span>${esc(u.username)}${u.id===me.id?' <span class="mut">(you)</span>':''}</span><span><span class="tag">${u.role==='admin'?'Owner':'Member'}</span>${u.person?`<span class="tag">${esc(u.person)}</span>`:''}</span></button>`).join('')}
+  <button onclick="openUser()">Add account</button>`:''}
   <h3>People</h3><p class="mut">Add the people in your household to give each their own shelves and wish list. Pick a person at the top to see only their books.</p>
   ${people.map(p=>`<div class="row item"><span>${esc(p.name)}</span><span style="display:flex;gap:.4rem"><button onclick="renamePerson(${p.id})">Rename</button><button class="danger" onclick="delPerson(${p.id})">Remove</button></span></div>`).join('')||'<p>No people yet.</p>'}
   <div class="row"><input id="np" placeholder="Name" aria-label="New person's name" autocapitalize="words" enterkeyhint="done" onkeydown="if(event.key==='Enter')addPerson()"><button onclick="addPerson()">Add</button></div>
@@ -264,17 +293,17 @@ async function renderSettings(m){
   <p class="mut" style="margin-top:1rem">Books added before now, or by hand with an ISBN, can have their covers, descriptions and other blanks filled in. Nothing you typed yourself is changed.</p>
   <button id="fillAll" onclick="fillAll()">Fill in missing details</button> <span id="fillp" class="mut" role="status"></span>
   <h3>Restricted section</h3><p class="mut">${set?'A PIN is set. Entering it opens the restricted section for a while, then it locks again.':'Set a PIN before marking any book as restricted.'}</p>
-  <button onclick="changePin(${set})">${set?'Change PIN':'Set PIN'}</button>
-  <h3>Backup</h3><p class="mut">${set?'Downloads include restricted books, so they need your PIN. ':''}The JSON file can be restored here later. The CSV opens in a spreadsheet.</p>
+  ${owner?`<button onclick="changePin(${set})">${set?'Change PIN':'Set PIN'}</button>`:'<p class="mut">An owner account can set or change the PIN.</p>'}
+  ${owner?`<h3>Backup</h3><p class="mut">${set?'Downloads include restricted books, so they need your PIN. ':''}The JSON file can be restored here later. The CSV opens in a spreadsheet.</p>
   <div class="row wrap"><button onclick="dl('/export.json')">Backup (JSON)</button><button onclick="dl('/export.csv')">Spreadsheet (CSV)</button><button onclick="dl('/backup.db')">Database file</button></div>
   <label for="imp">Restore from a JSON backup</label><input type="file" id="imp" accept=".json,application/json" onchange="restore(this)">
-  <p class="mut">Restoring replaces every shelf, book and person with what's in the file. The server keeps a copy of the current data first.</p>
+  <p class="mut">Restoring replaces every shelf, book and person with what's in the file. Accounts are kept. The server keeps a copy of the current data first.</p>`:''}
   <h3>About</h3><p class="mut">Home Library is free software, licensed under the GNU Affero General Public License v3. You can use, change and share it. <a href="${esc(about.source)}" target="_blank" rel="noopener">Source code</a></p>`}
 const KEY_HELP={isbndb:'Get a key at isbndb.com (paid plans).',google:'Free: create an API key in Google Cloud Console and turn on the Books API for it.'};
 function sourceRow(s){
   const state=s.enabled?(s.key_source?'On, with key':'On'):'Off, needs a key';
   let html=`<div class="item"><div class="row" style="margin:0;min-height:44px"><b style="font-weight:600">${esc(s.name)}</b><span class="mut" style="padding-right:.5rem">${state}${s.key_source==='env'?' (set on the server)':''}</span></div>`;
-  if(KEY_HELP[s.id]&&s.key_source!=='env')html+=`<p class="mut" style="margin:.25rem 0">${KEY_HELP[s.id]}</p><div class="row" style="margin:.25rem 0"><input id="key-${s.id}" type="password" autocomplete="off" aria-label="${esc(s.name)} API key" placeholder="${s.key_source?'Saved. Type a new key to replace it':'Paste the API key'}"><button onclick="saveKey('${s.id}')">Save</button></div>${s.key_source?`<button class="danger" style="margin:.25rem 0 .5rem" onclick="saveKey('${s.id}',true)">Remove key</button>`:''}`;
+  if(KEY_HELP[s.id]&&s.key_source!=='env'&&isOwner())html+=`<p class="mut" style="margin:.25rem 0">${KEY_HELP[s.id]}</p><div class="row" style="margin:.25rem 0"><input id="key-${s.id}" type="password" autocomplete="off" aria-label="${esc(s.name)} API key" placeholder="${s.key_source?'Saved. Type a new key to replace it':'Paste the API key'}"><button onclick="saveKey('${s.id}')">Save</button></div>${s.key_source?`<button class="danger" style="margin:.25rem 0 .5rem" onclick="saveKey('${s.id}',true)">Remove key</button>`:''}`;
   return html+'</div>'}
 async function saveKey(id,remove){
   const key=remove?'':$('#key-'+id).value.trim();
@@ -430,12 +459,71 @@ async function lockBtn(){
   if(open()){setTok('');toast('Restricted section locked');return render()}
   try{
     const {set}=await api('/pin-status');
+    if(!set&&!isOwner())return toast('An owner account needs to set a PIN first, in Settings.',true);
     const pin=await ask(set?{title:'Restricted section',label:'PIN',pin:true,ok:'Open'}:{title:'Set a PIN',label:'Choose a PIN (4 or more digits) for the restricted section',pin:true,ok:'Save'});
     if(!pin)return;
     setTok((await api(set?'/unlock':'/pin',{method:'POST',body:{pin}})).token);render()
   }catch(e){fail(e)}}
-render();
-/* Warn if the library would be wiped the next time the container is replaced. */
-api('/storage').then(r=>{if(r.status!=='temporary')return;const w=$('#warn');w.hidden=false;
-  w.innerHTML='<div class="note"><b>Your library isn’t being saved permanently.</b> The app’s data folder is temporary storage, so updating or redeploying the app will erase every book, shelf, person and key. On TrueNAS: Apps → home-library → Edit → Storage, and mount <code>/data</code> from a Host Path on a dataset. Download a backup from Settings first, then restore it afterwards.</div>'}).catch(()=>{});
+/* Accounts */
+let me=null,gateMode='login',accounts=[],editingUser=null;
+const isOwner=()=>me?.role==='admin';
+function showGate(mode){
+  gateMode=mode;document.querySelectorAll('dialog[open]').forEach(d=>d.close());
+  document.body.classList.add('gated');$('#gate').hidden=false;$('#gateErr').hidden=true;
+  const setup=mode==='setup';
+  $('#gateMsg').textContent=setup?'Welcome! Create the owner account first. You can add accounts for everyone else in Settings.':'Log in to your library.';
+  $('#gp').autocomplete=setup?'new-password':'current-password';$('#gp2w').hidden=!setup;$('#gp2').required=setup;
+  $('#gateBtn').textContent=setup?'Create account':'Log in';$('#gu').focus()}
+async function gateSubmit(){
+  const err=$('#gateErr'),username=$('#gu').value.trim(),password=$('#gp').value;err.hidden=true;
+  if(gateMode==='setup'&&password!==$('#gp2').value){err.textContent='The two passwords don’t match.';err.hidden=false;return}
+  $('#gateBtn').disabled=true;
+  try{
+    const r=await fetch('/api/auth/'+(gateMode==='setup'?'setup':'login'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'Something went wrong');
+    me=d.user;$('#gp').value=$('#gp2').value='';document.body.classList.remove('gated');$('#gate').hidden=true;start()
+  }catch(e){err.textContent=e.message;err.hidden=false}finally{$('#gateBtn').disabled=false}}
+async function logout(){
+  try{await api('/auth/logout',{method:'POST'})}catch(e){}
+  me=null;setTok('');tab='shelves';shelf=null;$('main').innerHTML='';$('#gu').value='';showGate('login')}
+async function changeMyPassword(){
+  const current=await ask({title:'Change password',label:'Current password',password:true,ok:'Next'});if(!current)return;
+  const pw=await ask({title:'Change password',label:'New password (8 or more characters)',password:true,ok:'Next'});if(!pw)return;
+  const again=await ask({title:'Change password',label:'New password again',password:true,ok:'Save'});if(again===null)return;
+  if(pw!==again)return toast('The two new passwords don’t match',true);
+  try{await api('/auth/password',{method:'POST',body:{current,password:pw}});toast('Password changed. Your other devices are logged out.')}catch(e){fail(e)}}
+function openUser(id){
+  const u=accounts.find(x=>x.id===id);editingUser=u||null;
+  $('#udT').textContent=u?u.username:'Add account';$('#udNameW').hidden=!!u;$('#udName').value='';$('#udPw').value='';
+  $('#udPwL').textContent=u?'Set a new password (leave blank to keep theirs)':'Password (8 or more characters)';
+  $('#udRole').value=u?u.role:'member';$('#udPerson').innerHTML=personOpts(u?u.person_id:'','Everyone');
+  $('#udDel').hidden=!u||u.id===me.id;$('#ud').showModal()}
+async function saveUser(){
+  const body={role:$('#udRole').value,person_id:num($('#udPerson').value)},pw=$('#udPw').value;
+  try{
+    if(editingUser){if(pw)body.password=pw;await api('/users/'+editingUser.id,{method:'PATCH',body});toast(pw?'Saved. They’ll need the new password to log in.':'Saved')}
+    else{await api('/users',{method:'POST',body:{...body,username:$('#udName').value.trim(),password:pw}});toast('Account added')}
+    $('#ud').close();
+    if(editingUser?.id===me.id&&body.role!=='admin')me.role=body.role;
+    render()
+  }catch(e){fail(e)}}
+async function removeUser(){
+  if(!confirm(`Remove ${editingUser.username}'s account? Their books and shelves stay.`))return;
+  try{await api('/users/'+editingUser.id,{method:'DELETE'});$('#ud').close();toast('Account removed');render()}catch(e){fail(e)}}
+let started=false;
+function start(){
+  // Start out showing the logged-in person's books, unless this device already chose.
+  if(!store.get('person')&&me.person_id){person=String(me.person_id);store.set('person',person)}
+  render();if(started)return;started=true;
+  /* Warn if the library would be wiped the next time the container is replaced. */
+  api('/storage').then(r=>{if(r.status!=='temporary')return;const w=$('#warn');w.hidden=false;
+  w.innerHTML='<div class="note"><b>Your library isn’t being saved permanently.</b> The app’s data folder is temporary storage, so updating or redeploying the app will erase every book, shelf, person and key. On TrueNAS: Apps → home-library → Edit → Storage, and mount <code>/data</code> from a Host Path on a dataset. Download a backup from Settings first, then restore it afterwards.</div>'}).catch(()=>{})}
+(async function boot(){
+  try{
+    const st=await (await fetch('/api/auth/status')).json();
+    if(st.setup_needed)return showGate('setup');
+    if(!st.user)return showGate('login');
+    me=st.user;start()
+  }catch(e){toast('Can’t reach the library server. Check it’s running, then reload.',true)}})();
 </script></body></html>

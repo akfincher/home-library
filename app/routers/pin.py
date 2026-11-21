@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from .. import config, security
+from .. import auth, config, security
 from ..schemas import Pin
 
 router = APIRouter(prefix="/api")
@@ -21,7 +21,7 @@ def _verify(pin: str) -> None:
     security.limiter.success()
 
 
-@router.post("/pin")
+@router.post("/pin", dependencies=[Depends(auth.require_owner)])
 def set_pin(b: Pin):
     """Set the first PIN, or change it (needs the current one). Returns a fresh
     unlock token, because changing the PIN logs out every open session."""

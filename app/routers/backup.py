@@ -14,9 +14,10 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.background import BackgroundTask
 
 from .. import db
+from .. import auth
 from ..security import require_admin
 
-router = APIRouter(prefix="/api", dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/api", dependencies=[Depends(auth.require_owner), Depends(require_admin)])
 
 EXPORT_VERSION = 1
 COLUMNS = {
@@ -87,4 +88,6 @@ def import_json(data: dict):
                               [r[k] for k in keys])
     except sqlite3.Error as e:
         raise HTTPException(400, f"The backup couldn't be restored, so nothing was changed: {e}")
+    # Accounts aren't in backups; unlink any from people that no longer exist.
+    db.run("UPDATE users SET person_id=NULL WHERE person_id NOT IN (SELECT id FROM people)")
     return {table: len(data[table]) for table in COLUMNS}
