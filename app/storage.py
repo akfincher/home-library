@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Works out whether the data folder will survive the container being replaced.
 
 Inside Docker, /proc/self/mountinfo lists what is mounted where. The data

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Aaron Fincher. See LICENSE.
 from fastapi import APIRouter, Depends, HTTPException
 
 from .. import db, metadata, security

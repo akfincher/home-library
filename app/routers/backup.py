@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Export, backup and restore. All of these include restricted books, so they
 need the PIN once one is set."""
 import csv

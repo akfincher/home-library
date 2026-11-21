@@ -82,4 +82,10 @@ Code layout: `app/db.py` (database and migrations), `app/security.py` (PIN and u
 ## Notes
 - Camera scanning only works over HTTPS (or localhost). Put a reverse proxy with a certificate in front of the app; manual ISBN entry works either way.
 - People are profiles, not logins: anyone who can open the app can see and edit everything outside the restricted section. Keep it on your home network or behind a VPN.
-- Licensed under the MIT License.
+
+## License
+Copyright (C) 2026 Aaron Fincher.
+
+Home Library is free software: you can redistribute it and/or modify it under the terms of the [GNU Affero General Public License](LICENSE) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+In short: you can use, change and share it, but if you share a modified version, or let other people use a modified version over a network, you must make your source code available under the same license. If you run a modified copy, set the `SOURCE_URL` environment variable to where your changes can be downloaded; the app links to it from Settings.

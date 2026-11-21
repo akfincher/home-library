@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Lets the app arrange books into shelves by a rule (genre, author, series,
 reading level or owner). Preview first, then apply. Applying saves a copy of
 the database first and only ever moves books; nothing is deleted."""

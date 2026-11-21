@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Aaron Fincher. See LICENSE.
 import os
 from contextlib import asynccontextmanager
 
@@ -26,6 +28,10 @@ def create_app(db_path: str | None = None) -> FastAPI:
     @app.get("/", include_in_schema=False)
     def index():
         return FileResponse(os.path.join(STATIC, "index.html"))
+
+    @app.get("/api/about")
+    def about():
+        return {"license": "AGPL-3.0-or-later", "source": config.SOURCE_URL}
 
     @app.get("/api/storage")
     def storage_status():

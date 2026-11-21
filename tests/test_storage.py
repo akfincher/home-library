@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Aaron Fincher. See LICENSE.
 from app.storage import classify
 
 ROOT = "1 0 0:50 / / rw,relatime master:1 - overlay overlay rw,lowerdir=/x\n"

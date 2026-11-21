@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Aaron Fincher. See LICENSE.
 import glob
 import sqlite3
 
@@ -196,3 +198,8 @@ def test_home_screen_app_files(c):
         r = c.get(icon["src"])
         assert r.status_code == 200 and r.content.startswith(b"\x89PNG")
     assert c.get("/static/apple-touch-icon.png").status_code == 200
+
+
+def test_about_points_to_the_source(c, monkeypatch):
+    about = c.get("/api/about").json()
+    assert about == {"license": "AGPL-3.0-or-later", "source": "https://github.com/akfincher/home-library"}

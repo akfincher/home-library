@@ -1,4 +1,6 @@
 <!doctype html>
+<!-- Home Library. Copyright (C) 2026 Aaron Fincher.
+     Licensed under the GNU AGPL, version 3 or later. See LICENSE. -->
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Home Library</title>
@@ -24,6 +26,7 @@ header select{width:auto;max-width:9rem}
 nav{display:flex;gap:.5rem;padding:0 1rem;max-width:900px;margin:auto}
 nav svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-4px;margin-right:.3rem}
 main{padding:1rem;max-width:900px;margin:auto}
+a{color:var(--acc);text-underline-offset:2px}
 button,input,select,textarea{font:inherit;font-size:16px;color:inherit}
 button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.5rem .9rem;min-height:44px;cursor:pointer;touch-action:manipulation}
 button.p{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -251,7 +254,7 @@ async function find(){
 
 /* Settings */
 async function renderSettings(m){
-  const [{set},src]=await Promise.all([api('/pin-status'),api('/sources')]);
+  const [{set},src,about]=await Promise.all([api('/pin-status'),api('/sources'),api('/about')]);
   m.innerHTML=`<h2>Settings</h2>
   <h3>People</h3><p class="mut">Add the people in your household to give each their own shelves and wish list. Pick a person at the top to see only their books.</p>
   ${people.map(p=>`<div class="row item"><span>${esc(p.name)}</span><span style="display:flex;gap:.4rem"><button onclick="renamePerson(${p.id})">Rename</button><button class="danger" onclick="delPerson(${p.id})">Remove</button></span></div>`).join('')||'<p>No people yet.</p>'}
@@ -265,7 +268,8 @@ async function renderSettings(m){
   <h3>Backup</h3><p class="mut">${set?'Downloads include restricted books, so they need your PIN. ':''}The JSON file can be restored here later. The CSV opens in a spreadsheet.</p>
   <div class="row wrap"><button onclick="dl('/export.json')">Backup (JSON)</button><button onclick="dl('/export.csv')">Spreadsheet (CSV)</button><button onclick="dl('/backup.db')">Database file</button></div>
   <label for="imp">Restore from a JSON backup</label><input type="file" id="imp" accept=".json,application/json" onchange="restore(this)">
-  <p class="mut">Restoring replaces every shelf, book and person with what's in the file. The server keeps a copy of the current data first.</p>`}
+  <p class="mut">Restoring replaces every shelf, book and person with what's in the file. The server keeps a copy of the current data first.</p>
+  <h3>About</h3><p class="mut">Home Library is free software, licensed under the GNU Affero General Public License v3. You can use, change and share it. <a href="${esc(about.source)}" target="_blank" rel="noopener">Source code</a></p>`}
 const KEY_HELP={isbndb:'Get a key at isbndb.com (paid plans).',google:'Free: create an API key in Google Cloud Console and turn on the Books API for it.'};
 function sourceRow(s){
   const state=s.enabled?(s.key_source?'On, with key':'On'):'Off, needs a key';
