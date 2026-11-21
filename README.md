@@ -21,8 +21,38 @@ The app is designed for phones first. Open it in your phone's browser, then add 
 Open http://localhost:8000. Data is stored in `./data`.
 
 ## Run on TrueNAS
-1. Create a dataset for the app's data.
-2. Apps > Discover Apps > Install via YAML, then paste the contents of `docker-compose.yml`, using a host path to your dataset for the volume and an unused host port (for example `30080:8000`).
+First create a dataset for the app's data (Datasets > Add Dataset), for example `apps/home-library`. Its path will be `/mnt/YOURPOOL/apps/home-library`. Then use either way below.
+
+**Install via YAML** (Apps > Discover Apps > ⋮ > Install via YAML), with your pool name in place of `YOURPOOL`:
+
+```yaml
+services:
+  library:
+    image: ghcr.io/akfincher/home-library:latest
+    ports:
+      - "30080:8000"
+    volumes:
+      - /mnt/YOURPOOL/apps/home-library:/data
+    restart: unless-stopped
+```
+
+**Or the Custom App form** (Apps > Discover Apps > Custom App):
+
+| Setting | Value |
+|---|---|
+| Image > Repository | `ghcr.io/akfincher/home-library` (without `:latest`) |
+| Image > Tag | `latest` |
+| Network > Port Forwarding | Container Port `8000`, Host Port `30080`, TCP |
+| Storage | Host Path `/mnt/YOURPOOL/apps/home-library` mounted at `/data` |
+
+Then open `http://<truenas-ip>:30080`. Note it is `http://`, not `https://`.
+
+Common problems:
+- *invalid reference format*: the Repository field also has `:latest` on the end, so the image name became `...:latest:latest`.
+- *Running, but the page won't connect*: the port numbers are swapped. On the app's page, Workloads > Ports should read `0.0.0.0:30080 : 8000`.
+- *Library empty after an update*: Storage was left as temporary storage instead of a Host Path.
+
+**HTTPS (needed for live barcode scanning on phones):** put a reverse proxy in front, such as the Nginx Proxy Manager app: add a Proxy Host forwarding to `http://<truenas-ip>:30080` and request a certificate on its SSL tab. Tailscale Serve also works and keeps the app private to your devices. Don't expose the app to the internet (for example through a public Cloudflare Tunnel) without a login in front of it, because it has no accounts of its own.
 
 ## Upgrading
 Pull the new image and restart the container. The database upgrades itself on startup, and saves a copy of the old one first as `library.db.pre-vN-<date>.bak` in the data folder. Once the new version is working you can delete that file. Restoring a JSON backup also saves a `library.db.pre-import-<date>.bak` first.

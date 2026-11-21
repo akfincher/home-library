@@ -1,6 +1,6 @@
 services:
   library:
     image: ghcr.io/akfincher/home-library:latest
-    ports: ["8000:8000"]
+    ports: ["8000:8000"]   # on TrueNAS use a free port, e.g. "30080:8000" (host:container)
     volumes: ["./data:/data"]   # on TrueNAS, use a dataset path like /mnt/POOL/apps/home-library
     restart: unless-stopped
