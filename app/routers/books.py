@@ -12,8 +12,11 @@ from .people import ensure_person
 
 router = APIRouter(prefix="/api/books")
 
-SELECT = ("SELECT b.*, s.name AS shelf, p.name AS person FROM books b "
-          "LEFT JOIN shelves s ON s.id=b.shelf_id LEFT JOIN people p ON p.id=b.person_id")
+# Each book comes with who has it on loan, if anyone.
+SELECT = ("SELECT b.*, s.name AS shelf, p.name AS person, l.borrower AS on_loan_to, l.due AS loan_due, "
+          "l.lent_at AS loan_since FROM books b "
+          "LEFT JOIN shelves s ON s.id=b.shelf_id LEFT JOIN people p ON p.id=b.person_id "
+          "LEFT JOIN loans l ON l.book_id=b.id AND l.returned_at IS NULL")
 TEXT = {"title", "authors", "isbn", "cover", "review", "subtitle", "description", "publisher", "published",
         "subjects", "series", "language"}
 # Columns a lookup can fill in. Only empty ones are ever filled, so nothing typed by hand is overwritten.
@@ -182,6 +185,7 @@ def patch_book(bid: int, body: BookPatch, is_unlocked: bool = Depends(unlocked))
 @router.delete("/{bid}")
 def delete_book(bid: int, is_unlocked: bool = Depends(unlocked)):
     book = _visible(bid, is_unlocked)
+    db.run("DELETE FROM loans WHERE book_id=?", (bid,))
     db.run("DELETE FROM books WHERE id=?", (bid,))
     log(f"Deleted {q(book['title'])} from {_where(book['shelf_id'], book['wishlist'])}", book)
     return {"ok": True}

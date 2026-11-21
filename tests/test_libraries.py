@@ -25,9 +25,9 @@ def open_signups(c):
 
 
 def sign_up(c, who=FRIEND):
-    code = c.post("/api/invites", json={"note": who["username"]}).json()["code"]
+    token = c.post("/api/invites", json={"email": f"{who['username']}@example.com"}).json()["token"]
     friend = TestClient(c.app)
-    r = friend.post("/api/auth/signup", json={**who, "code": code})
+    r = friend.post("/api/auth/signup", json={**who, "token": token})
     assert r.status_code == 200, r.text
     return friend
 

@@ -77,6 +77,13 @@ body.gated>*:not(#gate){display:none!important}
 .libbtn{background:none;border:0;padding:0;font:inherit;color:inherit;min-height:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
 .libbtn .caret{font-size:.6em;color:var(--mut);margin-left:.3em;vertical-align:middle}
 h4{margin:1.25rem 0 .25rem;font-size:1rem}
+.loan{display:inline-block;font-size:.75rem;font-weight:600;color:#fff;background:#b8860b;border-radius:99px;padding:.05rem .5rem;margin-top:.2rem}
+.loan.late{background:var(--hot)}
+#breader{border-radius:10px;transition:box-shadow .15s}
+#breader.scan-ok{box-shadow:0 0 0 5px #2e9e5b}
+#breader.scan-dup{box-shadow:0 0 0 5px var(--hot)}
+.btnlink{display:inline-flex;align-items:center;min-height:44px;padding:.5rem .9rem;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);text-decoration:none}
+.btnlink.p{background:var(--acc);border-color:var(--acc);color:#fff}
 .note{background:var(--bg);border-left:4px solid var(--hot);border-radius:6px;padding:.6rem .8rem;margin:.75rem 0;font-size:.9rem}
 .results>button{display:flex;gap:.75rem;align-items:center;width:100%;text-align:left;margin:.4rem 0;padding:.5rem}
 .thumb{width:44px;aspect-ratio:2/3;object-fit:cover;flex:none;border-radius:2px;background:var(--line)}
@@ -107,7 +114,7 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <div id="gate" hidden><form onsubmit="event.preventDefault();gateSubmit()">
 <img src="/static/icon-192.png" alt="" width="72" height="72">
 <h1>Home Library</h1><p id="gateMsg" class="mut"></p>
-<div id="gcw" hidden><label for="gc">Invite code</label><input id="gc" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="one-time-code" placeholder="XXXX-XXXX-XXXX"></div>
+<p id="gcw" hidden>Invitation for <b id="gEmail"></b></p>
 <label for="gu">Username</label><input id="gu" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required>
 <label for="gp">Password</label><input id="gp" type="password" autocomplete="current-password" required>
 <div id="gp2w" hidden><label for="gp2">Password again</label><input id="gp2" type="password" autocomplete="new-password"></div>
@@ -181,6 +188,13 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <p id="bcount" class="mut" role="status" aria-live="polite"></p>
 <ul id="blist" class="groups"></ul>
 <div class="row acts"><span></span><button class="p" onclick="this.closest('dialog').close()">Done</button></div>
+</dialog>
+
+<dialog id="lend" aria-labelledby="lendT"><h2 id="lendT">Lend this book</h2>
+<label for="lb">Lent to</label><input id="lb" list="lbList" autocapitalize="words" autocomplete="off"><datalist id="lbList"></datalist>
+<label for="ld">Due back (optional)</label><input id="ld" type="date">
+<label for="ln">Note (optional)</label><input id="ln" placeholder="For example, “signed copy, please be careful”">
+<div class="row acts"><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveLend()">Lend</button></div>
 </dialog>
 
 <dialog id="org" aria-labelledby="orgT"><h2 id="orgT">Organize shelves</h2>
@@ -268,7 +282,7 @@ const spice=b=>b.spicy==null?'':b.spicy?`<span class="hot" aria-label="spice ${b
 function card(b,showShelf){
   const img=b.cover?`<img src="${esc(b.cover)}" alt="" loading="lazy">`:`<div class="ph">${esc(b.title)}</div>`;
   const mv=arranging?`<span class="mv"><button type="button" aria-label="Move ${esc(b.title)} left" onclick="moveCard(this,-1)">◀</button><button type="button" aria-label="Move ${esc(b.title)} right" onclick="moveCard(this,1)">▶</button></span>`:'';
-  return `<div class="book" data-id="${b.id}" role="button" tabindex="0" onclick="if(!arranging)edit(${b.id})" onkeydown="if(event.key==='Enter'&&!arranging)edit(${b.id})">${mv}${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.series?'<br><span class="mut">'+esc(seriesText(b))+'</span>':''}${stars(b)?'<br>'+stars(b):''}${spice(b)?'<br>'+spice(b):''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}</div>`}
+  return `<div class="book" data-id="${b.id}" role="button" tabindex="0" onclick="if(!arranging)edit(${b.id})" onkeydown="if(event.key==='Enter'&&!arranging)edit(${b.id})">${mv}${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.series?'<br><span class="mut">'+esc(seriesText(b))+'</span>':''}${stars(b)?'<br>'+stars(b):''}${spice(b)?'<br>'+spice(b):''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}${b.on_loan_to?`<br><span class="loan${overdue(b.loan_due)?' late':''}">On loan · ${esc(b.on_loan_to)}</span>`:''}</div>`}
 async function render(){
   document.body.classList.toggle('is-arranging',arranging);
   const libName=me?.library?.name||'Home Library';
@@ -278,7 +292,7 @@ async function render(){
     $('main').innerHTML=`<h2>Welcome, ${esc(me.username)}</h2><p>You’re not in a library right now.</p>
     <div class="row wrap"><button class="p" onclick="newLibrary()">Create a library</button><button onclick="logout()">Log out</button></div>
     <p class="mut">Or ask someone to add you to theirs. Your username is <b>${esc(me.username)}</b>.</p>`;return}
-  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tab));
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===(tab==='loans'?'shelves':tab)));
   $('#lock').innerHTML=open()?'<span aria-hidden="true">🔓</span><span class="lbl"> Lock</span>':'<span aria-hidden="true">🔒</span><span class="lbl"> Restricted</span>';
   $('#lock').setAttribute('aria-label',open()?'Lock the restricted section':'Open the restricted section');
   try{people=await api('/people')}catch(e){return fail(e)}
@@ -287,8 +301,11 @@ async function render(){
   try{shelves=await api('/shelves'+pq())}catch(e){return fail(e)}
   const m=$('main');
   try{
+  if(tab==='loans')return await renderLoans(m);
   if(tab==='shelves'&&!shelf){
-    m.innerHTML=`<div class="row"><h2>Shelves</h2><span style="display:flex;gap:.5rem">${isOwner()?'<button onclick="openOrganize()">Organize</button>':''}<button onclick="openShelf()">New shelf</button></span></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render();scrollTo(0,0)"><span>${esc(s.name)} <small class="mut">(${s.count})</small>${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</span></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
+    const out=await api('/loans'),late=out.filter(l=>l.overdue).length;
+    const loanRow=out.length?`<div class="list"><button onclick="tab='loans';render();scrollTo(0,0)"><span>📤 On loan <small class="mut">(${out.length})</small>${late?`<span class="loan late" style="margin-left:.4rem">${late} overdue</span>`:''}</span></button></div>`:'';
+    m.innerHTML=loanRow+`<div class="row"><h2>Shelves</h2><span style="display:flex;gap:.5rem">${isOwner()?'<button onclick="openOrganize()">Organize</button>':''}<button onclick="openShelf()">New shelf</button></span></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render();scrollTo(0,0)"><span>${esc(s.name)} <small class="mut">(${s.count})</small>${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</span></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
   if(tab==='shelves'){
     const s=shelves.find(x=>x.id===shelf);if(!s){shelf=null;return render()}
     const bs=sorted(await api('/books?shelf_id='+shelf+pq('&')+(person?'&shared=true':'')),s.sort);
@@ -326,10 +343,11 @@ async function renderSettings(m){
   ${owner?`<h4>Members</h4><p class="mut">Everyone who can use this library. Members add and edit books and shelves; owners also manage members, the PIN and backups. To share this library with someone who already has an account, add them by their username.</p>
   ${members.map(u=>`<button class="item" style="display:flex;justify-content:space-between;width:100%;text-align:left" onclick="openUser(${u.id})"><span>${esc(u.username)}${u.id===me.id?' <span class="mut">(you)</span>':''}</span><span><span class="tag">${u.role==='admin'?'Owner':'Member'}</span>${u.person?`<span class="tag">${esc(u.person)}</span>`:''}</span></button>`).join('')}
   <button onclick="openUser()">Add someone</button>`:''}
-  ${me.can_invite?`<h3>Invite people</h3><p class="mut">Nobody can create an account without an invite code. Each code is for one person: it works once and expires after 14 days. They’ll get their own private library.</p>
-  <div class="row"><input id="invNote" placeholder="Who it’s for (optional)" aria-label="Who the invite is for" autocapitalize="words"><button class="p" onclick="createInvite()">Create code</button></div>
+  ${me.can_invite?`<h3>Invite people</h3><p class="mut">Nobody can create an account unless they’re invited. Enter someone’s email address to make a personal sign-up link for them, then send it from your own email. Each link works once and expires after 14 days. They’ll get their own private library.</p>
+  <label for="invEmail">Their email address</label><input id="invEmail" type="email" inputmode="email" autocapitalize="off" autocomplete="off" placeholder="name@example.com">
+  <label for="invNote">Name or note (optional)</label><div class="row" style="margin:0"><input id="invNote" placeholder="Sarah" autocapitalize="words"><button class="p" onclick="createInvite()">Invite</button></div>
   <div id="newCode"></div>
-  ${invites.length?`<ul class="groups">${invites.map(i=>`<li class="row" style="margin:0"><span>${i.note?esc(i.note):'<span class="mut">No note</span>'} <span class="mut">· …${esc(i.hint)}</span><br><span class="mut">${{used:`Used by ${esc(i.used_by)}`,cancelled:'Cancelled',expired:'Expired',waiting:`Waiting · expires ${when(i.expires_at,1)}`}[i.status]}${admin&&i.created_by!==me.username?` · from ${esc(i.created_by)}`:''}</span></span>${i.status==='waiting'?`<button class="danger" onclick="cancelInvite(${i.id})">Cancel</button>`:''}</li>`).join('')}</ul>`:''}`:''}
+  ${invites.length?`<ul class="groups">${invites.map(i=>`<li class="row" style="margin:0"><span>${esc(i.email||'Invite code …'+i.hint)}${i.note?` <span class="mut">· ${esc(i.note)}</span>`:''}<br><span class="mut">${{used:`Used by ${esc(i.used_by)}`,cancelled:'Cancelled',expired:'Expired',waiting:`Waiting · expires ${when(i.expires_at,1)}`}[i.status]}${admin&&i.created_by!==me.username?` · from ${esc(i.created_by)}`:''}</span></span>${i.status==='waiting'?`<button class="danger" onclick="cancelInvite(${i.id})">Cancel</button>`:''}</li>`).join('')}</ul>`:''}`:''}
   <h3>People</h3><p class="mut">Add the people in your household to give each their own shelves and wish list. Pick a person at the top to see only their books.</p>
   ${people.map(p=>`<div class="row item"><span>${esc(p.name)}</span><span style="display:flex;gap:.4rem"><button onclick="renamePerson(${p.id})">Rename</button><button class="danger" onclick="delPerson(${p.id})">Remove</button></span></div>`).join('')||'<p>No people yet.</p>'}
   <div class="row"><input id="np" placeholder="Name" aria-label="New person's name" autocapitalize="words" enterkeyhint="done" onkeydown="if(event.key==='Enter')addPerson()"><button onclick="addPerson()">Add</button></div>
@@ -345,7 +363,7 @@ async function renderSettings(m){
   <p class="mut">Restoring replaces every shelf, book and person in this library with what's in the file. Members are kept. The server keeps a copy of the current data first.</p>`:''}
   <h3>Leave or delete</h3><div class="row wrap"><button class="danger" onclick="leaveLibrary()">Leave this library</button>${owner?'<button class="danger" onclick="deleteLibrary()">Delete this library</button>':''}</div>
   ${admin?`<h3>Server</h3>
-  <p class="mut">People can only sign up with an invite code. You can always create codes; switch on “Can invite people” for anyone else who should be able to.</p>
+  <p class="mut">People can only sign up through an invitation sent to their email address. You can always invite people; switch on “Can invite people” for anyone else who should be able to.</p>
   <h4>Accounts on this server</h4>
   ${accts.map(a=>`<div class="row item"><span>${esc(a.username)}${a.site_admin?' <span class="tag">Admin</span>':''}<br><span class="mut">${esc(a.library_names||'No library')}</span>${a.site_admin?'':`<label class="check" style="min-height:36px;font-size:.9rem"><input type="checkbox" ${a.can_invite?'checked':''} onchange="setCanInvite(${a.id},this.checked)">Can invite people</label>`}</span>${a.id===me.id?'':`<button class="danger" onclick="deleteAccount(${a.id})">Delete</button>`}</div>`).join('')}`:''}
   <h3>About</h3><p class="mut">Home Library is free software, licensed under the GNU Affero General Public License v3. You can use, change and share it. <a href="${esc(about.source)}" target="_blank" rel="noopener">Source code</a></p>`}
@@ -427,6 +445,28 @@ async function orgApply(){
     render()
   }catch(e){fail(e)}}
 
+/* Lending */
+const overdue=due=>!!due&&due<new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+const day=t=>new Date(t*1000).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+const dueText=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+function openLend(){
+  $('#lendT').textContent='Lend “'+editing.title+'”';$('#lb').value='';$('#ln').value='';
+  const d=new Date(Date.now()+21*86400000);$('#ld').value=new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  $('#lbList').innerHTML=people.map(p=>`<option value="${esc(p.name)}">`).join('');$('#lend').showModal();$('#lb').focus()}
+async function saveLend(){
+  const borrower=$('#lb').value.trim();if(!borrower)return toast('Who are you lending it to?',true);
+  try{await api('/books/'+editing.id+'/lend',{method:'POST',body:{borrower,due:$('#ld').value,note:$('#ln').value.trim()}});
+    $('#lend').close();toast(`Lent to ${borrower}`);await edit(editing.id);render()}catch(e){fail(e)}}
+async function returnBook(id){
+  id=id||editing.id;
+  try{await api('/books/'+id+'/return',{method:'POST'});toast('Checked back in');if($('#ed').open)await edit(id);render()}catch(e){fail(e)}}
+async function renderLoans(m){
+  const [out,back]=await Promise.all([api('/loans'),api('/loans?returned=true')]);
+  const row=(l,current)=>`<li class="row" style="margin:0;align-items:flex-start;gap:.75rem">${l.cover?`<img class="thumb" src="${esc(l.cover)}" alt="">`:'<span class="thumb"></span>'}<span style="flex:1;min-width:0"><b style="font-weight:600">${esc(l.title)}</b><br>${current?`<span${l.overdue?' class="hot"':''}>${esc(l.borrower)} · since ${day(l.lent_at)}${l.due?` · ${l.overdue?'was due':'due'} ${dueText(l.due)}`:''}</span>`:`<span class="mut">${esc(l.borrower)} · ${day(l.lent_at)} – ${day(l.returned_at)}</span>`}${l.note?`<br><span class="mut">${esc(l.note)}</span>`:''}</span>${current?`<button onclick="returnBook(${l.book_id})">It’s back</button>`:''}</li>`;
+  m.innerHTML=`<div class="row"><button onclick="tab='shelves';render()">‹ Shelves</button></div><h2>On loan</h2>
+  ${out.length?`<ul class="groups">${out.map(l=>row(l,true)).join('')}</ul>`:'<p>Nothing is out on loan right now. To lend a book, open it and tap “Lend this book”.</p>'}
+  ${back.length?`<details><summary>Recently returned (${back.length})</summary><ul class="groups">${back.map(l=>row(l,false)).join('')}</ul></details>`:''}`}
+
 /* Change history */
 const when=(t,future)=>{if(future){const days=Math.ceil((t-Date.now()/1000)/86400);return days<=1?'within a day':`in ${days} days`}
   const s=Date.now()/1000-t,d=new Date(t*1000);
@@ -493,6 +533,9 @@ async function scan(){
   }catch(e){scanner=null;$('#reader').innerHTML='';toast('The camera could not start. Scanning needs HTTPS and camera permission. You can type the ISBN instead.',true)}}
 $('#add').addEventListener('close',stopScan);
 let bulkScanner=null,bulkBusy=false,bulkSeen=new Map(),bulkAdded=0,bulkT=0,audio=null;
+let flashT=0;
+function flashScan(kind){const r=$('#breader');r.classList.remove('scan-ok','scan-dup');void r.offsetWidth;r.classList.add('scan-'+kind);
+  clearTimeout(flashT);flashT=setTimeout(()=>r.classList.remove('scan-'+kind),1200)}
 /* A soft, short two-note chime for a good scan. The sound needs a tap to start
    (browser rule), which opening "Add several books" provides. */
 function chime(){
@@ -526,8 +569,8 @@ async function bulkAdd(raw){
   const isbn=isbnOf(raw);if(!isbn)return toast('That isn’t an ISBN',true);
   if(bulkBusy)return;
   // Each ISBN only once per batch (the camera keeps seeing a barcode while it's in view).
-  if(bulkSeen.has(isbn)){$('#bisbn').value='';const n=Date.now();if(n-(bulkSeen.get(isbn)||0)>4000){toast('Already scanned in this batch');bulkSeen.set(isbn,n)}return}
-  bulkBusy=true;bulkSeen.set(isbn,Date.now());$('#bisbn').value='';navigator.vibrate?.(60);chime();
+  if(bulkSeen.has(isbn)){$('#bisbn').value='';flashScan('dup');const n=Date.now();if(n-(bulkSeen.get(isbn)||0)>4000){toast('Already scanned in this batch');bulkSeen.set(isbn,n)}return}
+  bulkBusy=true;bulkSeen.set(isbn,Date.now());$('#bisbn').value='';navigator.vibrate?.(60);chime();flashScan('ok');
   const li=document.createElement('li');li.innerHTML=`<span class="mut">Looking up ${isbn}…</span>`;$('#blist').prepend(li);
   try{
     let d=null;try{d=await api('/lookup/'+isbn)}catch(e){}
@@ -554,7 +597,9 @@ async function edit(id,keepOpen){
   try{const b=await api('/books/'+id);editing=b;
     const tags=b.subjects?`<div class="tags">${b.subjects.split(',').map(s=>s.trim()).filter(Boolean).map(s=>`<span class="tag">${esc(s)}</span>`).join('')}</div>`:'';
     const rated=[stars(b),spice(b)].filter(Boolean).join(' · ');
-    $('#einfo').innerHTML=infoHtml(b)+`<p style="margin:.25rem 0">${rated||'<span class="mut">Not rated yet</span>'} <span class="mut">· change in Edit book details</span></p>`+tags+(b.description?`<p class="desc" title="Tap to show all" onclick="this.classList.toggle('open')">${esc(b.description)}</p>`:'');
+    const loan=b.on_loan_to?`<div class="note${overdue(b.loan_due)?'':' tip'}" style="margin:.5rem 0"><b>On loan to ${esc(b.on_loan_to)}</b> since ${day(b.loan_since)}${b.loan_due?` · ${overdue(b.loan_due)?'was due':'due'} ${dueText(b.loan_due)}`:''}<div class="row" style="margin:.5rem 0 0"><span></span><button class="p" onclick="returnBook()">✓ It’s back</button></div></div>`
+      :`<button onclick="openLend()" style="margin:.5rem 0">📤 Lend this book</button>`;
+    $('#einfo').innerHTML=infoHtml(b)+loan+`<p style="margin:.25rem 0">${rated||'<span class="mut">Not rated yet</span>'} <span class="mut">· change in Edit book details</span></p>`+tags+(b.description?`<p class="desc" title="Tap to show all" onclick="this.classList.toggle('open')">${esc(b.description)}</p>`:'');
     $('#esh').innerHTML=opts(b.wishlist?'w':b.shelf_id);$('#epp').innerHTML=personOpts(b.person_id,'Nobody in particular');
     $('#ev').value=b.review;
     $('#el').value=b.ar_level??'';$('#ep').value=b.ar_points??'';$('#ex').checked=!!b.restricted;
@@ -585,30 +630,31 @@ async function lockBtn(){
 /* Accounts */
 let me=null,gateMode='login',accounts=[],editingUser=null;
 const isOwner=()=>me?.library?.role==='admin';
-let signupOpen=false,serverAccounts=[];
+let signupOpen=false,serverAccounts=[],inviteToken='';
 function showGate(mode){
   gateMode=mode;document.querySelectorAll('dialog[open]').forEach(d=>d.close());
   document.body.classList.add('gated');$('#gate').hidden=false;$('#gateErr').hidden=true;
   const fresh=mode!=='login';
   $('#gateMsg').textContent={setup:'Welcome! Create the first account. It owns this library and runs the server; you can add everyone else in Settings.',
-    signup:'Enter the invite code you were given, then create your account. You’ll get your own library, which only you and the people you share it with can see.',
+    signup:'Welcome! Choose a username and password to create your account. You’ll get your own library, which only you and the people you share it with can see.',
     login:'Log in to your library.'}[mode];
   $('#gp').autocomplete=fresh?'new-password':'current-password';$('#gp2w').hidden=!fresh;$('#gp2').required=fresh;
-  $('#gplw').hidden=$('#gcw').hidden=mode!=='signup';$('#gc').required=mode==='signup';
+  $('#gplw').hidden=$('#gcw').hidden=mode!=='signup';
   $('#gateBtn').textContent=fresh?'Create account':'Log in';
-  const sw=$('#gateSwitch');sw.hidden=!(mode==='signup'||(mode==='login'&&signupOpen));
-  sw.innerHTML=mode==='signup'?'Already have an account? <a href="#" onclick="showGate(\'login\');return false">Log in</a>':'Have an invite code? <a href="#" onclick="showGate(\'signup\');return false">Create an account</a>';
+  const sw=$('#gateSwitch');sw.hidden=mode!=='signup';
+  sw.innerHTML='Already have an account? <a href="#" onclick="showGate(\'login\');return false">Log in</a>';
   $('#gu').focus()}
 async function gateSubmit(){
   const err=$('#gateErr'),username=$('#gu').value.trim(),password=$('#gp').value;err.hidden=true;
   if(gateMode!=='login'&&password!==$('#gp2').value){err.textContent='The two passwords don’t match.';err.hidden=false;return}
   $('#gateBtn').disabled=true;
   try{
-    const body={username,password};if(gateMode==='signup'){body.library=$('#gpl').value.trim();body.code=$('#gc').value.trim()}
+    const body={username,password};if(gateMode==='signup'){body.library=$('#gpl').value.trim();body.token=inviteToken}
     const r=await fetch('/api/auth/'+gateMode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'Something went wrong');
-    me=d.user;$('#gp').value=$('#gp2').value=$('#gpl').value=$('#gc').value='';document.body.classList.remove('gated');$('#gate').hidden=true;start()
+    if(gateMode==='signup'){inviteToken='';history.replaceState(null,'',location.pathname)}
+    me=d.user;$('#gp').value=$('#gp2').value=$('#gpl').value='';document.body.classList.remove('gated');$('#gate').hidden=true;start()
   }catch(e){err.textContent=e.message;err.hidden=false}finally{$('#gateBtn').disabled=false}}
 async function refreshMe(){const st=await (await fetch('/api/auth/status')).json();if(!st.user)return showGate('login');me=st.user}
 function openLibs(){
@@ -640,16 +686,20 @@ async function setCanInvite(id,on){
   const a=serverAccounts.find(x=>x.id===id);
   try{await api('/server/accounts/'+id,{method:'PATCH',body:{can_invite:on}});toast(on?`${a.username} can now invite people`:`${a.username} can no longer invite people`)}catch(e){fail(e)}}
 async function createInvite(){
+  const email=$('#invEmail').value.trim(),note=$('#invNote').value.trim();
+  if(!email)return toast('Enter their email address',true);
   try{
-    const note=$('#invNote').value.trim(),{code}=await api('/invites',{method:'POST',body:{note}});
+    const {token}=await api('/invites',{method:'POST',body:{email,note}});
     render();await new Promise(r=>setTimeout(r,400));
     const box=$('#newCode');if(!box)return;
-    const msg=`You're invited to my Home Library! Go to ${location.origin}, tap “Create an account” and use this invite code: ${code}`;
-    box.innerHTML=`<div class="note tip"><b>Invite code${note?' for '+esc(note):''}</b><p style="font:600 1.4rem ui-monospace,monospace;letter-spacing:.08em;margin:.4rem 0">${esc(code)}</p><p class="mut" style="margin:.25rem 0">Copy it now: for safety it can’t be shown again. It works once, within 14 days.</p><div class="row wrap"><button onclick="copyText(this.dataset.t)" data-t="${esc(code)}">Copy code</button>${navigator.share?`<button onclick="navigator.share({text:this.dataset.t}).catch(()=>{})" data-t="${esc(msg)}">Share…</button>`:`<button onclick="copyText(this.dataset.t)" data-t="${esc(msg)}">Copy invite message</button>`}</div></div>`;
+    const link=`${location.origin}/?invite=${encodeURIComponent(token)}`,hi=note?`Hi ${note},\n\n`:'Hi,\n\n';
+    const body=`${hi}I’d like to invite you to our Home Library, where you can keep track of your books.\n\nThis link is just for you. Tap it to create your account (it works once, within 14 days):\n${link}\n\nSee you there!`;
+    const mail=`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Your invitation to Home Library')}&body=${encodeURIComponent(body)}`;
+    box.innerHTML=`<div class="note tip"><b>Invitation for ${esc(note||email)}</b><p class="mut" style="margin:.25rem 0">Send this link now: for safety it can’t be shown again.</p><p style="word-break:break-all;font-size:.85rem;margin:.4rem 0">${esc(link)}</p><div class="row wrap"><a class="btnlink p" href="${esc(mail)}">✉️ Email it</a>${navigator.share?`<button onclick="navigator.share({text:this.dataset.t}).catch(()=>{})" data-t="${esc(body)}">Share…</button>`:''}<button onclick="copyText(this.dataset.t)" data-t="${esc(link)}">Copy link</button></div></div>`;
     box.scrollIntoView({block:'center'})
   }catch(e){fail(e)}}
-async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Copied')}catch(e){toast('Copy didn’t work here. Press and hold the code to copy it instead.',true)}}
-async function cancelInvite(id){if(!confirm('Cancel this invite code? It will stop working.'))return;try{await api('/invites/'+id,{method:'DELETE'});toast('Invite cancelled');render()}catch(e){fail(e)}}
+async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Copied')}catch(e){toast('Copy didn’t work here. Press and hold the link to copy it instead.',true)}}
+async function cancelInvite(id){if(!confirm('Cancel this invitation? Its link will stop working.'))return;try{await api('/invites/'+id,{method:'DELETE'});toast('Invite cancelled');render()}catch(e){fail(e)}}
 async function deleteAccount(id){
   const a=serverAccounts.find(x=>x.id===id);
   if(!confirm(`Delete the account ${a.username}? They’re removed from every library they’re in. Their libraries’ books stay with the other members.`))return;
@@ -692,6 +742,13 @@ function start(){
   try{
     const st=await (await fetch('/api/auth/status')).json();signupOpen=st.signup_open;
     if(st.setup_needed)return showGate('setup');
+    // Opened from a personal invitation link: sign up (unless already logged in).
+    const inv=new URLSearchParams(location.search).get('invite');
+    if(inv&&!st.user){
+      const r=await fetch('/api/invites/check?token='+encodeURIComponent(inv)),d=await r.json().catch(()=>({}));
+      if(r.ok){inviteToken=inv;$('#gEmail').textContent=d.email;return showGate('signup')}
+      showGate('login');$('#gateErr').textContent=typeof d.detail==='string'?d.detail:'That invitation link isn’t valid.';$('#gateErr').hidden=false;return}
+    if(inv)history.replaceState(null,'',location.pathname);
     if(!st.user)return showGate('login');
     me=st.user;start()
   }catch(e){toast('Can’t reach the library server. Check it’s running, then reload.',true)}})();

@@ -31,6 +31,7 @@ COLUMNS = {
               "rating", "spicy", "review", "ar_level", "ar_points", "subtitle", "description", "publisher",
               "published", "pages", "subjects", "series", "series_index", "language", "position"],
 }
+LOAN_COLUMNS = ["book_id", "borrower", "note", "lent_at", "due", "returned_at"]
 CSV_COLUMNS = ["title", "subtitle", "authors", "series", "series_index", "isbn", "publisher", "published", "pages",
                "subjects", "language", "shelf", "person", "wishlist", "restricted", "rating", "spicy", "ar_level",
                "ar_points", "review", "description"]
@@ -45,6 +46,7 @@ def export_json():
     data = {"app": "home-library", "version": EXPORT_VERSION, "exported_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     for table, cols in COLUMNS.items():
         data[table] = db.rows(f"SELECT {', '.join(cols)} FROM {table} WHERE library_id=? ORDER BY id", (lib(),))
+    data["loans"] = db.rows(f"SELECT {', '.join(LOAN_COLUMNS)} FROM loans WHERE library_id=? ORDER BY id", (lib(),))
     return JSONResponse(data, headers=_attachment("json"))
 
 
@@ -91,13 +93,13 @@ def import_json(data: dict):
     try:
         with db.connect() as c:
             c.execute("UPDATE memberships SET person_id=NULL WHERE library_id=?", (library,))
-            for table in ("books", "shelves", "people"):
+            for table in ("loans", "books", "shelves", "people"):
                 c.execute(f"DELETE FROM {table} WHERE library_id=?", (library,))
             # Only the columns the file has, so backups from older versions get the defaults.
             pick = lambda table, r: {k: r[k] for k in COLUMNS[table] if k in r and k != "id"}
             people = {r.get("id"): _insert(c, "people", {**pick("people", r), "library_id": library})
                       for r in data["people"]}
-            shelves = {}
+            shelves, books = {}, {}
             for r in data["shelves"]:
                 row = {**pick("shelves", r), "library_id": library, "person_id": people.get(r.get("person_id"))}
                 shelves[r.get("id")] = _insert(c, "shelves", row)
@@ -106,7 +108,12 @@ def import_json(data: dict):
                        "shelf_id": shelves.get(r.get("shelf_id")), "person_id": people.get(r.get("person_id"))}
                 if data["version"] == 1:
                     row.update({k: None for k in ("rating", "spicy") if not r.get(k)})
-                _insert(c, "books", row)
+                books[r.get("id")] = _insert(c, "books", row)
+            # Loans arrived later, so older backups simply have none.
+            for r in data.get("loans") or []:
+                if isinstance(r, dict) and books.get(r.get("book_id")) and r.get("borrower") and r.get("lent_at"):
+                    _insert(c, "loans", {**{k: r.get(k) for k in LOAN_COLUMNS if k in r}, "library_id": library,
+                                         "book_id": books[r["book_id"]], "due": r.get("due") or ""})
     except sqlite3.Error as e:
         raise HTTPException(400, f"The backup couldn't be restored, so nothing was changed: {e}")
     log(f"Restored a backup ({len(data['books'])} books, {len(data['shelves'])} shelves)")

@@ -79,7 +79,7 @@ def delete(b: LibraryName):
         raise HTTPException(400, "Type the library's name exactly to delete it.")
     db.backup_to(f"{db.path()}.pre-delete-library-{db.stamp()}.bak")
     with db.connect() as c:
-        for table in ("books", "shelves", "people", "changes", "memberships"):
+        for table in ("loans", "books", "shelves", "people", "changes", "memberships"):
             c.execute(f"DELETE FROM {table} WHERE library_id=?", (current["id"],))
         c.execute("DELETE FROM libraries WHERE id=?", (current["id"],))
     return {"ok": True}

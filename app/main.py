@@ -10,12 +10,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import auth, changelog, config, context, db, security, storage
-from .routers import (account, backup, books, invites, libraries, lookup, members, organize, people, pin,
+from .routers import (account, backup, books, invites, libraries, loans, lookup, members, organize, people, pin,
                       server, shelves)
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 # API paths anyone may use without logging in.
-PUBLIC_API = {"/api/auth/status", "/api/auth/login", "/api/auth/setup", "/api/auth/signup", "/api/about"}
+PUBLIC_API = {"/api/auth/status", "/api/auth/login", "/api/auth/setup", "/api/auth/signup", "/api/about",
+              "/api/invites/check"}
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -51,7 +52,8 @@ def create_app(db_path: str | None = None) -> FastAPI:
             context.LIBRARY.set(user["library"])
         return await call_next(request)
 
-    for r in (account, invites, members, libraries, server, pin, people, shelves, books, lookup, backup, organize):
+    for r in (account, invites, members, libraries, server, pin, people, shelves, books, loans, lookup, backup,
+              organize):
         app.include_router(r.router)
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 

@@ -48,7 +48,8 @@ def setup(b: Credentials, request: Request, response: Response):
 
 
 class SignUp(Credentials):
-    code: str = Field("", max_length=40)
+    token: str = Field("", max_length=100)  # the secret from the personal sign-up link
+    code: str = Field("", max_length=40)  # an older typed invite code
     library: str = Field("", max_length=100)
 
 
@@ -58,12 +59,13 @@ def reset() -> None:
 
 @router.post("/signup")
 def signup(b: SignUp, request: Request, response: Response):
-    """Creates an account with its own library. Needs an invite code from someone
-    the server's administrator allows to invite people."""
+    """Creates an account with its own library. Needs the secret from a personal
+    invitation link, sent by someone the server's administrator allows to invite people."""
     if not auth.has_users():
         raise HTTPException(409, "Create the first account instead.")
-    if not b.code.strip():
-        raise HTTPException(403, "You need an invite code to create an account.")
+    secret = (b.token or b.code).strip()
+    if not secret:
+        raise HTTPException(403, "You need an invitation to create an account.")
     username = auth.clean_username(b.username)
     auth.validate_password(b.password)
     try:
@@ -71,7 +73,7 @@ def signup(b: SignUp, request: Request, response: Response):
             uid = c.execute("INSERT INTO users(username, password, role) VALUES(?,?,'member')",
                             (username, auth.hash_password(b.password))).lastrowid
             # In the same transaction: a wrong code means no account, and a code can't be used twice.
-            invites.redeem(c, b.code, uid)
+            invites.redeem(c, secret, uid)
     except sqlite3.IntegrityError:
         raise HTTPException(400, "That username is already taken.")
     lib_id = auth.new_library(b.library.strip() or f"{username}'s Library", uid)

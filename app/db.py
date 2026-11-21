@@ -100,6 +100,16 @@ MIGRATIONS = [
     ALTER TABLE users ADD COLUMN invited_by INTEGER;
     DELETE FROM settings WHERE k='signups';
     """,
+    # 9: lending books out, and inviting people by email with a personal sign-up link.
+    """
+    CREATE TABLE loans(id INTEGER PRIMARY KEY, library_id INTEGER NOT NULL, book_id INTEGER NOT NULL,
+      borrower TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', lent_at REAL NOT NULL, due TEXT NOT NULL DEFAULT '',
+      returned_at REAL, lent_by INTEGER, returned_by INTEGER);
+    CREATE INDEX loans_book ON loans(book_id, returned_at);
+    CREATE INDEX loans_library ON loans(library_id, returned_at);
+    ALTER TABLE invites ADD COLUMN email TEXT NOT NULL DEFAULT '';
+    ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT '';
+    """,
 ]
 
 
