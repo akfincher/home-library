@@ -60,6 +60,7 @@ input[type=file]{padding:.5rem}
 .star.on{color:#e0a100}
 .fab{position:fixed;right:1rem;bottom:calc(1rem + var(--sb));border-radius:99px;padding:.8rem 1.3rem;box-shadow:0 4px 12px #0005;z-index:4}
 #reader video{border-radius:8px}
+#warn{max-width:900px;margin:.5rem auto 0;padding:0 1rem}#warn .note{margin:0;font-size:.95rem}
 .note{background:var(--bg);border-left:4px solid var(--hot);border-radius:6px;padding:.6rem .8rem;margin:.75rem 0;font-size:.9rem}
 .results>button{display:flex;gap:.75rem;align-items:center;width:100%;text-align:left;margin:.4rem 0;padding:.5rem}
 .thumb{width:44px;aspect-ratio:2/3;object-fit:cover;flex:none;border-radius:2px;background:var(--line)}
@@ -96,6 +97,7 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <button data-t="search" onclick="go('search')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5a6 6 0 1 0 0 12a6 6 0 1 0 0-12zM16 16l4 4"/></svg>Search</button>
 <button data-t="settings" onclick="go('settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9M15 5v4M9 15v4"/></svg>Settings</button>
 </nav>
+<div id="warn" role="alert" hidden></div>
 <main></main>
 <button class="p fab" onclick="openAdd()">+ Add book</button>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -364,4 +366,7 @@ async function lockBtn(){
     setTok((await api(set?'/unlock':'/pin',{method:'POST',body:{pin}})).token);render()
   }catch(e){fail(e)}}
 render();
+/* Warn if the library would be wiped the next time the container is replaced. */
+api('/storage').then(r=>{if(r.status!=='temporary')return;const w=$('#warn');w.hidden=false;
+  w.innerHTML='<div class="note"><b>Your library isn’t being saved permanently.</b> The app’s data folder is temporary storage, so updating or redeploying the app will erase every book, shelf, person and key. On TrueNAS: Apps → home-library → Edit → Storage, and mount <code>/data</code> from a Host Path on a dataset. Download a backup from Settings first, then restore it afterwards.</div>'}).catch(()=>{});
 </script></body></html>

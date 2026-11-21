@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, db, security
+from . import config, db, security, storage
 from .routers import backup, books, lookup, people, pin, shelves
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -26,6 +26,11 @@ def create_app(db_path: str | None = None) -> FastAPI:
     @app.get("/", include_in_schema=False)
     def index():
         return FileResponse(os.path.join(STATIC, "index.html"))
+
+    @app.get("/api/storage")
+    def storage_status():
+        """Whether the data folder survives the container being replaced."""
+        return {"status": storage.status(db.path())}
 
     @app.get("/healthz", include_in_schema=False)
     def healthz():
