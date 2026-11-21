@@ -15,11 +15,11 @@ def pin_status():
 
 
 def _verify(pin: str) -> None:
-    security.limiter.check()
+    security.limiter().check()
     if not security.check_pin(pin):
-        security.limiter.fail()
+        security.limiter().fail()
         raise HTTPException(403, "Wrong PIN")
-    security.limiter.success()
+    security.limiter().success()
 
 
 @router.post("/pin", dependencies=[Depends(auth.require_owner)])

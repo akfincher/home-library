@@ -18,7 +18,7 @@ def c(tmp_path):
 
 
 def member_of(c):
-    c.post("/api/users", json=MEMBER)
+    c.post("/api/members", json=MEMBER)
     m = TestClient(c.app)
     m.post("/api/auth/login", json=MEMBER)
     return m
@@ -107,11 +107,14 @@ def test_history_records_who_did_what(c):
     den = c.post("/api/shelves", json={"name": "Den"}).json()["id"]
     member.patch(f"/api/books/{bid}", json={"rating": 5, "review": "Great", "shelf_id": den})
     member.patch(f"/api/books/{bid}", json={"rating": 5})  # nothing actually changed
+    member.patch(f"/api/books/{bid}", json={"rating": 0, "spicy": 2, "title": "Dune (1965)"})
     c.delete(f"/api/books/{bid}")
-    assert history(c)[:5] == [
-        ("owner", "Deleted “Dune”"),
-        ("mia", "Edited “Dune”: rating, review"),
-        ("mia", "Moved “Dune” to “Den”"),
+    assert history(c)[:6] == [
+        ("owner", "Deleted “Dune (1965)” from “Den”"),
+        ("mia", "Changed “Dune (1965)”: title from “Dune” to “Dune (1965)”; rating from 5 stars to 0 stars; "
+                "spice from not rated to 2 peppers"),
+        ("mia", "Changed “Dune”: rating from not rated to 5 stars; added the review"),
+        ("mia", "Moved “Dune” from “Main” to “Den”"),
         ("owner", "Created shelf “Den”"),
         ("mia", "Added “Dune” to “Main”"),
     ]
@@ -120,7 +123,7 @@ def test_history_records_who_did_what(c):
 def test_account_changes_only_shown_to_owners(c):
     member = member_of(c)
     member.post("/api/shelves", json={"name": "Kids"})
-    assert ("owner", "Added the member account mia") in history(c)
+    assert ("owner", "Created the account mia as a member") in history(c)
     assert history(member) == [("mia", "Created shelf “Kids”")]
 
 
@@ -132,16 +135,15 @@ def test_restricted_books_hidden_from_history_while_locked(c):
     locked = [s for _, s in history(c)]
     unlocked = [s for _, s in history(c, h)]
     assert not any("Secret" in s for s in locked)  # even the "Added" from before it was restricted
-    assert "Edited “Secret”: review" in unlocked and "Added “Secret” to the wish list" in unlocked
+    assert "Changed “Secret”: added the review" in unlocked and "Added “Secret” to the wish list" in unlocked
 
 
-def test_history_pages_back(c):
+def test_history_keeps_the_last_50(c):
     for i in range(60):
         c.post("/api/people", json={"name": f"P{i}"})
-    first = c.get("/api/changes").json()
-    assert len(first) == 50
-    older = c.get(f"/api/changes?before_id={first[-1]['id']}").json()
-    assert older and older[0]["id"] < first[-1]["id"]
+    entries = c.get("/api/changes").json()
+    assert len(entries) == 50 and entries[0]["summary"] == "Added P59 to the household"
+    assert db.one("SELECT COUNT(*) AS n FROM changes")["n"] == 50  # the older ones are gone, not just hidden
 
 
 def test_organize_and_restore_are_recorded(c):

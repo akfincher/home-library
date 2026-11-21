@@ -9,24 +9,29 @@ A free, self-hosted web app for cataloging a home bookshelf. One container, SQLi
 - People: add everyone in the house, then pick a person at the top to see only their shelves, wish list and books. Books that belong to someone else are hidden; books that belong to nobody in particular are shown to everyone
 - A new library starts with a **Main** shelf, and Add book puts books there unless you choose another
 - Add books by scanning the ISBN barcode, typing the ISBN, or searching by title and author, then picking the right book. A complete ISBN is looked up as soon as it's scanned or typed
-- **Add several books in a row**: pick the shelf and person once, then scan book after book. Each is looked up and added straight away, the camera stays on, and every one can be undone. Books that can't be found are added with their ISBN to fix later
-- **Change history** in Settings: what was added, moved or changed, by whom and when
+- **Add several books in a row**: pick the shelf and person once, then scan book after book. Each is looked up and added straight away with a soft chime, the camera stays on, each ISBN is only added once per batch, and every book can be undone. Books that can't be found are added with their ISBN to fix later
+- **Change history** (Settings > Change history): the last 50 changes to a library, who made them and exactly what changed, e.g. “rating from 0 stars to 5 stars”
+- **Several libraries on one server**: keep separate libraries (home, a classroom, a book club), switch between them by tapping the library's name at the top, and share any of them with other accounts. Each library's books, shelves, people, PIN and history are private to its members
 - Book details filled in automatically: cover, subtitle, description, publisher, date, pages, subjects and language, from ISBNdb (with a paid API key), Open Library and Google Books. Each source only fills what the earlier ones left blank. Series and anything else can be edited by hand, and Settings can fill in blanks for books already in your library without touching what you typed
 - Search across every shelf and the wish list by title, author, series, subject, publisher or ISBN; sort shelves by title, author, series or newest
 - Wish list, reviews, 0-5 star ratings and spice ratings (0 is "no spice", different from not rated; changed only in Edit book details, so a stray tap can't change them), AR level/points (manual entry)
 - Titles sort without a leading "The", "A" or "An", so The Hunger Games is under H
 - A restricted section hidden behind a PIN that unlocks for 15 minutes (`UNLOCK_SECONDS` to change). After 5 wrong PINs the app makes you wait, doubling each time up to 15 minutes. Changing the PIN locks every device that had it open.
-- Backups: download everything as JSON (and restore it later), as a spreadsheet (CSV), or as the raw database file, from Settings
+- Backups: download a library as JSON (and restore it later, into the same or another library) or as a spreadsheet (CSV), from Settings. The server's administrator can also download the whole database
 
 ## On your phone
 The app is designed for phones first. Open it in your phone's browser, then add it to your home screen (iPhone: Share > Add to Home Screen; Android: menu > Add to Home screen / Install app). It then opens full screen like an app, with its own icon.
 
-## Accounts and logging in
-Everyone logs in with their own account. The **owner** account comes from `OWNER_USERNAME` / `OWNER_PASSWORD` when you deploy (see above); without those, the first visit asks you to create it. After that, owners add accounts for everyone else in Settings.
+## Accounts, libraries and sharing
+Everyone logs in with their own account. The first account comes from `OWNER_USERNAME` / `OWNER_PASSWORD` when you deploy (see above); without those, the first visit asks you to create it. That account owns the first library and is the server's **administrator**.
 
-- **Members** can add, edit, arrange and search books and shelves.
-- **Owners** can also add and remove accounts, set the restricted-section PIN, add API keys, organize the whole library and download or restore backups.
-- An account can be linked to a person, so it starts out showing that person's books.
+- **Libraries.** Every account can have several libraries and switch between them without logging out: tap the library's name at the top of the screen. Create one there too, for example a classroom library alongside your home library.
+- **Sharing.** In a library's Settings, owners add people by username. Someone who already has an account just gets the library added to their list. Giving a password instead creates a new account that only belongs to that library, handy for kids.
+- **Members** can add, edit, arrange and search books and shelves. **Owners** of a library can also manage its members, set its restricted-section PIN, organize it, rename or delete it, and back it up or restore it.
+- **Inviting people from outside the household.** Nobody can sign up without an **invite code**. The administrator can always create codes, and can switch on *Can invite people* for other accounts in *Settings > Server*. Anyone allowed sees *Settings > Invite people*: add a note saying who it's for, tap *Create code*, and send the code (or use *Share*). Each code works once, expires after 14 days, and can be cancelled before it's used; the list shows who used each one. Only a fingerprint of each code is stored, and wrong guesses are throttled. The new person taps *Have an invite code? Create an account* on the login page and gets their own private library, where they're the owner with the same rights you have in yours. People who sign up can't create codes themselves unless the administrator allows it.
+- **The administrator** also sets the book-details API keys (shared by every library), sees and can delete every account on the server, and can download the whole database.
+- An account can be linked to a person in a library, so it starts out showing that person's books.
+- A library owner can only reset the password of an account that belongs to their library alone, so being in someone's classroom library never lets them take over your account.
 - You stay logged in on each device for 30 days after you last used it. Changing your password logs out your other devices.
 - After 5 wrong passwords for an account, the app makes you wait before trying again, doubling each time up to 15 minutes.
 

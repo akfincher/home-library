@@ -74,6 +74,9 @@ input[type=file]{padding:.5rem}
 #gate{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:1.5rem 1rem}
 #gate form{width:min(100%,360px)}#gate h1{margin:.5rem 0 .25rem}
 body.gated>*:not(#gate){display:none!important}
+.libbtn{background:none;border:0;padding:0;font:inherit;color:inherit;min-height:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.libbtn .caret{font-size:.6em;color:var(--mut);margin-left:.3em;vertical-align:middle}
+h4{margin:1.25rem 0 .25rem;font-size:1rem}
 .note{background:var(--bg);border-left:4px solid var(--hot);border-radius:6px;padding:.6rem .8rem;margin:.75rem 0;font-size:.9rem}
 .results>button{display:flex;gap:.75rem;align-items:center;width:100%;text-align:left;margin:.4rem 0;padding:.5rem}
 .thumb{width:44px;aspect-ratio:2/3;object-fit:cover;flex:none;border-radius:2px;background:var(--line)}
@@ -104,13 +107,16 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <div id="gate" hidden><form onsubmit="event.preventDefault();gateSubmit()">
 <img src="/static/icon-192.png" alt="" width="72" height="72">
 <h1>Home Library</h1><p id="gateMsg" class="mut"></p>
+<div id="gcw" hidden><label for="gc">Invite code</label><input id="gc" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="one-time-code" placeholder="XXXX-XXXX-XXXX"></div>
 <label for="gu">Username</label><input id="gu" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required>
 <label for="gp">Password</label><input id="gp" type="password" autocomplete="current-password" required>
 <div id="gp2w" hidden><label for="gp2">Password again</label><input id="gp2" type="password" autocomplete="new-password"></div>
+<div id="gplw" hidden><label for="gpl">Name your library</label><input id="gpl" placeholder="For example, Jo's Books" autocapitalize="words"></div>
 <p id="gateErr" class="note" role="alert" hidden></p>
 <button class="p wide" id="gateBtn" style="margin-top:1.25rem">Log in</button>
+<p id="gateSwitch" style="text-align:center;margin-top:1.25rem" hidden></p>
 </form></div>
-<header><h1>Home Library</h1>
+<header><h1><button id="libBtn" class="libbtn" onclick="openLibs()" aria-label="Switch library">Home Library</button></h1>
 <select id="who" aria-label="Whose books to show" onchange="setPerson(this.value)" hidden></select>
 <button id="lock" onclick="lockBtn()"></button></header>
 <nav aria-label="Sections">
@@ -190,10 +196,24 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 
 <dialog id="ud" aria-labelledby="udT"><h2 id="udT"></h2>
 <div id="udNameW"><label for="udName">Username</label><input id="udName" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off"></div>
-<label for="udPw" id="udPwL">Password</label><input id="udPw" type="password" autocomplete="new-password">
-<label for="udRole">Account type</label><select id="udRole"><option value="member">Member: uses the library</option><option value="admin">Owner: also manages accounts, keys and backups</option></select>
+<div id="udPwW"><label for="udPw" id="udPwL">Password</label><input id="udPw" type="password" autocomplete="new-password"></div>
+<p id="udPwNote" class="mut" hidden>They also belong to other libraries, so only they can change their password.</p>
+<label for="udRole">Role in this library</label><select id="udRole"><option value="member">Member: adds and edits books and shelves</option><option value="admin">Owner: also manages members, the PIN and backups</option></select>
 <label for="udPerson">Starts out showing the books of</label><select id="udPerson"></select>
 <div class="row acts"><button id="udDel" class="danger" onclick="removeUser()">Remove</button><span style="flex:1"></span><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveUser()">Save</button></div>
+</dialog>
+
+<dialog id="libs" aria-labelledby="libsT"><h2 id="libsT">Your libraries</h2>
+<p class="mut">Each library has its own shelves, books and people. Switch any time without logging out.</p>
+<div id="libList" class="list"></div>
+<button class="wide" onclick="newLibrary()">+ Create a new library</button>
+<div class="row acts"><span></span><button onclick="this.closest('dialog').close()">Close</button></div>
+</dialog>
+
+<dialog id="histd" aria-labelledby="histT"><h2 id="histT">Change history</h2>
+<p class="mut">The last 50 changes to this library, newest first.</p>
+<ul id="hist" class="groups"></ul>
+<div class="row acts"><span></span><button onclick="this.closest('dialog').close()">Close</button></div>
 </dialog>
 
 <dialog id="ask" aria-labelledby="askT"><form method="dialog"><h2 id="askT"></h2>
@@ -224,7 +244,8 @@ function ask({title,label,value='',pin=false,password=false,ok='OK'}){
   return new Promise(res=>d.addEventListener('close',()=>res(d.returnValue==='ok'?i.value:null),{once:true}))}
 const go=t=>{tab=t;shelf=null;arranging=false;render();scrollTo(0,0)};
 const pq=(pre='?')=>person?pre+'person_id='+person:'';
-const setPerson=v=>{person=v;store.set('person',v);shelf=null;render()};
+const personKey=()=>'person-'+(me?.library?.id||'');
+const setPerson=v=>{person=v;store.set(personKey(),v);shelf=null;render()};
 const sortTitle=t=>(t||'').trim().replace(/^(the|a|an)\s+/i,'');
 const byTitle=(x,y)=>sortTitle(x.title).localeCompare(sortTitle(y.title),undefined,{sensitivity:'base',numeric:true});
 const SORTS={title:byTitle,author:(x,y)=>x.authors.localeCompare(y.authors)||byTitle(x,y),
@@ -250,6 +271,13 @@ function card(b,showShelf){
   return `<div class="book" data-id="${b.id}" role="button" tabindex="0" onclick="if(!arranging)edit(${b.id})" onkeydown="if(event.key==='Enter'&&!arranging)edit(${b.id})">${mv}${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.series?'<br><span class="mut">'+esc(seriesText(b))+'</span>':''}${stars(b)?'<br>'+stars(b):''}${spice(b)?'<br>'+spice(b):''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}</div>`}
 async function render(){
   document.body.classList.toggle('is-arranging',arranging);
+  const libName=me?.library?.name||'Home Library';
+  $('#libBtn').innerHTML=`${esc(libName)}<span class="caret" aria-hidden="true">▼</span>`;document.title=libName;
+  if(me&&!me.library){
+    $('#who').hidden=true;
+    $('main').innerHTML=`<h2>Welcome, ${esc(me.username)}</h2><p>You’re not in a library right now.</p>
+    <div class="row wrap"><button class="p" onclick="newLibrary()">Create a library</button><button onclick="logout()">Log out</button></div>
+    <p class="mut">Or ask someone to add you to theirs. Your username is <b>${esc(me.username)}</b>.</p>`;return}
   document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tab));
   $('#lock').innerHTML=open()?'<span aria-hidden="true">🔓</span><span class="lbl"> Lock</span>':'<span aria-hidden="true">🔒</span><span class="lbl"> Restricted</span>';
   $('#lock').setAttribute('aria-label',open()?'Lock the restricted section':'Open the restricted section');
@@ -285,37 +313,47 @@ async function find(){
 
 /* Settings */
 async function renderSettings(m){
-  const owner=isOwner();
-  const [{set},src,about,users]=await Promise.all([api('/pin-status'),api('/sources'),api('/about'),owner?api('/users'):[]]);
-  accounts=users;
+  const owner=isOwner(),admin=!!me.site_admin,L=me.library;
+  const [{set},src,about,members,invites,accts]=await Promise.all([api('/pin-status'),api('/sources'),api('/about'),
+    owner?api('/members'):[],me.can_invite?api('/invites'):[],admin?api('/server/accounts'):[]]);
+  accounts=members;serverAccounts=accts;
   m.innerHTML=`<h2>Settings</h2>
-  <h3>Your account</h3><p>Logged in as <b>${esc(me.username)}</b> <span class="tag">${owner?'Owner':'Member'}</span></p>
+  <h3>Your account</h3><p>Logged in as <b>${esc(me.username)}</b>${admin?' <span class="tag">Server admin</span>':''}</p>
   <div class="row wrap"><button onclick="changeMyPassword()">Change password</button><button onclick="logout()">Log out</button></div>
-  ${owner?`<h3>Accounts</h3><p class="mut">Everyone who uses the library gets their own login. Members can add and edit books and shelves. Owners can also manage accounts, keys, backups and the PIN.</p>
-  ${users.map(u=>`<button class="item" style="display:flex;justify-content:space-between;width:100%;text-align:left" onclick="openUser(${u.id})"><span>${esc(u.username)}${u.id===me.id?' <span class="mut">(you)</span>':''}</span><span><span class="tag">${u.role==='admin'?'Owner':'Member'}</span>${u.person?`<span class="tag">${esc(u.person)}</span>`:''}</span></button>`).join('')}
-  <button onclick="openUser()">Add account</button>`:''}
+  <h3>This library</h3><p><b>${esc(L.name)}</b> <span class="tag">${owner?'Owner':'Member'}</span></p>
+  <p class="mut">Tap the library’s name at the top of the screen to switch libraries or create another one.</p>
+  <div class="row wrap"><button onclick="openHistory()">Change history</button>${owner?'<button onclick="renameLibrary()">Rename library</button>':''}</div>
+  ${owner?`<h4>Members</h4><p class="mut">Everyone who can use this library. Members add and edit books and shelves; owners also manage members, the PIN and backups. To share this library with someone who already has an account, add them by their username.</p>
+  ${members.map(u=>`<button class="item" style="display:flex;justify-content:space-between;width:100%;text-align:left" onclick="openUser(${u.id})"><span>${esc(u.username)}${u.id===me.id?' <span class="mut">(you)</span>':''}</span><span><span class="tag">${u.role==='admin'?'Owner':'Member'}</span>${u.person?`<span class="tag">${esc(u.person)}</span>`:''}</span></button>`).join('')}
+  <button onclick="openUser()">Add someone</button>`:''}
+  ${me.can_invite?`<h3>Invite people</h3><p class="mut">Nobody can create an account without an invite code. Each code is for one person: it works once and expires after 14 days. They’ll get their own private library.</p>
+  <div class="row"><input id="invNote" placeholder="Who it’s for (optional)" aria-label="Who the invite is for" autocapitalize="words"><button class="p" onclick="createInvite()">Create code</button></div>
+  <div id="newCode"></div>
+  ${invites.length?`<ul class="groups">${invites.map(i=>`<li class="row" style="margin:0"><span>${i.note?esc(i.note):'<span class="mut">No note</span>'} <span class="mut">· …${esc(i.hint)}</span><br><span class="mut">${{used:`Used by ${esc(i.used_by)}`,cancelled:'Cancelled',expired:'Expired',waiting:`Waiting · expires ${when(i.expires_at,1)}`}[i.status]}${admin&&i.created_by!==me.username?` · from ${esc(i.created_by)}`:''}</span></span>${i.status==='waiting'?`<button class="danger" onclick="cancelInvite(${i.id})">Cancel</button>`:''}</li>`).join('')}</ul>`:''}`:''}
   <h3>People</h3><p class="mut">Add the people in your household to give each their own shelves and wish list. Pick a person at the top to see only their books.</p>
   ${people.map(p=>`<div class="row item"><span>${esc(p.name)}</span><span style="display:flex;gap:.4rem"><button onclick="renamePerson(${p.id})">Rename</button><button class="danger" onclick="delPerson(${p.id})">Remove</button></span></div>`).join('')||'<p>No people yet.</p>'}
   <div class="row"><input id="np" placeholder="Name" aria-label="New person's name" autocapitalize="words" enterkeyhint="done" onkeydown="if(event.key==='Enter')addPerson()"><button onclick="addPerson()">Add</button></div>
-  <h3>Book details</h3><p class="mut">Where details come from when you scan or search. Open Library is free and always on. Google Books is free too, but needs its own key to work reliably. ISBNdb is a paid service that knows more books; with a key it's asked first.</p>
+  <h3>Book details</h3><p class="mut">Where details come from when you scan or search. Open Library is free and always on. Google Books is free too, but needs its own key to work reliably. ISBNdb is a paid service that knows more books; with a key it's asked first.${admin?'':' Keys are set by the server’s administrator, for every library on it.'}</p>
   ${src.map(sourceRow).join('')}
   <p class="mut" style="margin-top:1rem">Books added before now, or by hand with an ISBN, can have their covers, descriptions and other blanks filled in. Nothing you typed yourself is changed.</p>
   <button id="fillAll" onclick="fillAll()">Fill in missing details</button> <span id="fillp" class="mut" role="status"></span>
-  <h3>Restricted section</h3><p class="mut">${set?'A PIN is set. Entering it opens the restricted section for a while, then it locks again.':'Set a PIN before marking any book as restricted.'}</p>
-  ${owner?`<button onclick="changePin(${set})">${set?'Change PIN':'Set PIN'}</button>`:'<p class="mut">An owner account can set or change the PIN.</p>'}
-  ${owner?`<h3>Backup</h3><p class="mut">${set?'Downloads include restricted books, so they need your PIN. ':''}The JSON file can be restored here later. The CSV opens in a spreadsheet.</p>
-  <div class="row wrap"><button onclick="dl('/export.json')">Backup (JSON)</button><button onclick="dl('/export.csv')">Spreadsheet (CSV)</button><button onclick="dl('/backup.db')">Database file</button></div>
+  <h3>Restricted section</h3><p class="mut">${set?'A PIN is set. Entering it opens the restricted section for a while, then it locks again.':'Set a PIN before marking any book as restricted.'} Each library has its own PIN.</p>
+  ${owner?`<button onclick="changePin(${set})">${set?'Change PIN':'Set PIN'}</button>`:'<p class="mut">An owner of this library can set or change the PIN.</p>'}
+  ${owner?`<h3>Backup</h3><p class="mut">${set?'Downloads include restricted books, so they need your PIN. ':''}Backups hold this library only. The JSON file can be restored here later, or into another library. The CSV opens in a spreadsheet.</p>
+  <div class="row wrap"><button onclick="dl('/export.json')">Backup (JSON)</button><button onclick="dl('/export.csv')">Spreadsheet (CSV)</button>${admin?'<button onclick="dl(\'/backup.db\')">Whole server (database)</button>':''}</div>
   <label for="imp">Restore from a JSON backup</label><input type="file" id="imp" accept=".json,application/json" onchange="restore(this)">
-  <p class="mut">Restoring replaces every shelf, book and person with what's in the file. Accounts are kept. The server keeps a copy of the current data first.</p>`:''}
-  <h3>Change history</h3><p class="mut">What's been added, moved and changed, and by whom.</p>
-  <ul id="hist" class="groups"></ul><button id="histMore" onclick="loadHistory().catch(fail)" hidden>Show older changes</button>
-  <h3>About</h3><p class="mut">Home Library is free software, licensed under the GNU Affero General Public License v3. You can use, change and share it. <a href="${esc(about.source)}" target="_blank" rel="noopener">Source code</a></p>`;
-  loadHistory(true).catch(fail)}
+  <p class="mut">Restoring replaces every shelf, book and person in this library with what's in the file. Members are kept. The server keeps a copy of the current data first.</p>`:''}
+  <h3>Leave or delete</h3><div class="row wrap"><button class="danger" onclick="leaveLibrary()">Leave this library</button>${owner?'<button class="danger" onclick="deleteLibrary()">Delete this library</button>':''}</div>
+  ${admin?`<h3>Server</h3>
+  <p class="mut">People can only sign up with an invite code. You can always create codes; switch on “Can invite people” for anyone else who should be able to.</p>
+  <h4>Accounts on this server</h4>
+  ${accts.map(a=>`<div class="row item"><span>${esc(a.username)}${a.site_admin?' <span class="tag">Admin</span>':''}<br><span class="mut">${esc(a.library_names||'No library')}</span>${a.site_admin?'':`<label class="check" style="min-height:36px;font-size:.9rem"><input type="checkbox" ${a.can_invite?'checked':''} onchange="setCanInvite(${a.id},this.checked)">Can invite people</label>`}</span>${a.id===me.id?'':`<button class="danger" onclick="deleteAccount(${a.id})">Delete</button>`}</div>`).join('')}`:''}
+  <h3>About</h3><p class="mut">Home Library is free software, licensed under the GNU Affero General Public License v3. You can use, change and share it. <a href="${esc(about.source)}" target="_blank" rel="noopener">Source code</a></p>`}
 const KEY_HELP={isbndb:'Get a key at isbndb.com (paid plans).',google:'Free: create an API key in Google Cloud Console and turn on the Books API for it.'};
 function sourceRow(s){
   const state=s.enabled?(s.key_source?'On, with key':'On'):'Off, needs a key';
   let html=`<div class="item"><div class="row" style="margin:0;min-height:44px"><b style="font-weight:600">${esc(s.name)}</b><span class="mut" style="padding-right:.5rem">${state}${s.key_source==='env'?' (set on the server)':''}</span></div>`;
-  if(KEY_HELP[s.id]&&s.key_source!=='env'&&isOwner())html+=`<p class="mut" style="margin:.25rem 0">${KEY_HELP[s.id]}</p><div class="row" style="margin:.25rem 0"><input id="key-${s.id}" type="password" autocomplete="off" aria-label="${esc(s.name)} API key" placeholder="${s.key_source?'Saved. Type a new key to replace it':'Paste the API key'}"><button onclick="saveKey('${s.id}')">Save</button></div>${s.key_source?`<button class="danger" style="margin:.25rem 0 .5rem" onclick="saveKey('${s.id}',true)">Remove key</button>`:''}`;
+  if(KEY_HELP[s.id]&&s.key_source!=='env'&&me.site_admin)html+=`<p class="mut" style="margin:.25rem 0">${KEY_HELP[s.id]}</p><div class="row" style="margin:.25rem 0"><input id="key-${s.id}" type="password" autocomplete="off" aria-label="${esc(s.name)} API key" placeholder="${s.key_source?'Saved. Type a new key to replace it':'Paste the API key'}"><button onclick="saveKey('${s.id}')">Save</button></div>${s.key_source?`<button class="danger" style="margin:.25rem 0 .5rem" onclick="saveKey('${s.id}',true)">Remove key</button>`:''}`;
   return html+'</div>'}
 async function saveKey(id,remove){
   const key=remove?'':$('#key-'+id).value.trim();
@@ -390,16 +428,16 @@ async function orgApply(){
   }catch(e){fail(e)}}
 
 /* Change history */
-let histBefore=null;
-const when=t=>{const s=Date.now()/1000-t,d=new Date(t*1000);
+const when=(t,future)=>{if(future){const days=Math.ceil((t-Date.now()/1000)/86400);return days<=1?'within a day':`in ${days} days`}
+  const s=Date.now()/1000-t,d=new Date(t*1000);
   if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' hr ago';
   return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:d.getFullYear()===new Date().getFullYear()?undefined:'numeric'})};
-async function loadHistory(first){
-  if(first)histBefore=null;
-  const rows=await api('/changes'+(histBefore?'?before_id='+histBefore:''));
-  const ul=$('#hist');if(!ul)return;if(first)ul.innerHTML='';
-  ul.insertAdjacentHTML('beforeend',rows.map(r=>`<li>${esc(r.summary)}<br><span class="mut">${esc(r.username||'Someone')} · ${when(r.at)}</span></li>`).join('')||(first?'<li class="mut">No changes yet.</li>':''));
-  if(rows.length)histBefore=rows.at(-1).id;$('#histMore').hidden=rows.length<50}
+async function openHistory(){
+  const ul=$('#hist');ul.innerHTML='<li class="mut">Loading…</li>';$('#histd').showModal();
+  try{
+    const rows=await api('/changes');
+    ul.innerHTML=rows.map(r=>`<li>${esc(r.summary)}<br><span class="mut">${esc(r.username||'Someone')} · ${when(r.at)}</span></li>`).join('')||'<li class="mut">No changes yet.</li>'
+  }catch(e){ul.innerHTML='';fail(e)}}
 
 /* Shelves */
 function openShelf(id){
@@ -454,12 +492,24 @@ async function scan(){
     await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:120},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13]},async t=>{await stopScan();navigator.vibrate?.(60);$('#isbn').value=t;lastAuto=isbnOf(t);lookup(t)})
   }catch(e){scanner=null;$('#reader').innerHTML='';toast('The camera could not start. Scanning needs HTTPS and camera permission. You can type the ISBN instead.',true)}}
 $('#add').addEventListener('close',stopScan);
-let bulkScanner=null,bulkBusy=false,bulkRecent={},bulkAdded=0,bulkT=0;
+let bulkScanner=null,bulkBusy=false,bulkSeen=new Map(),bulkAdded=0,bulkT=0,audio=null;
+/* A soft, short two-note chime for a good scan. The sound needs a tap to start
+   (browser rule), which opening "Add several books" provides. */
+function chime(){
+  try{
+    audio=audio||new (window.AudioContext||window.webkitAudioContext)();
+    const t=audio.currentTime;
+    [[784,0],[1047,.09]].forEach(([f,at])=>{const o=audio.createOscillator(),g=audio.createGain();
+      o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,t+at);g.gain.linearRampToValueAtTime(.06,t+at+.015);
+      g.gain.exponentialRampToValueAtTime(.0001,t+at+.22);o.connect(g).connect(audio.destination);o.start(t+at);o.stop(t+at+.25)})
+  }catch(e){}}
 const loadScanner=()=>window.Html5Qrcode?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';s.onload=ok;s.onerror=no;document.head.append(s)});
 function openBulk(){
   const sh=$('#sh').value,ap=$('#ap').value;$('#add').close();
   $('#bsh').innerHTML=opts(sh);$('#bsh').value=sh;$('#bap').innerHTML=personOpts(ap,'Nobody in particular');
-  $('#blist').innerHTML=$('#bcount').textContent='';$('#bisbn').value='';bulkAdded=0;bulkRecent={};$('#bulk').showModal();
+  $('#blist').innerHTML=$('#bcount').textContent='';$('#bisbn').value='';bulkAdded=0;bulkSeen=new Map();
+  try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume()}catch(e){}
+  $('#bulk').showModal();
   if(isSecureContext)bulkCamera();else $('#bisbn').focus()}
 async function bulkCamera(){
   if(bulkScanner)return stopBulkCam();
@@ -474,20 +524,21 @@ function bulkAuto(){clearTimeout(bulkT);const d=isbnOf($('#bisbn').value);if(d&&
 const bulkCountText=()=>{$('#bcount').textContent=bulkAdded?`${bulkAdded} book${bulkAdded===1?'':'s'} added`:''};
 async function bulkAdd(raw){
   const isbn=isbnOf(raw);if(!isbn)return toast('That isn’t an ISBN',true);
-  // The camera keeps seeing the same barcode while it's in view; only add it once.
-  const now=Date.now();if(bulkBusy||(bulkRecent[isbn]&&now-bulkRecent[isbn]<5000))return;
-  bulkBusy=true;bulkRecent[isbn]=now;$('#bisbn').value='';navigator.vibrate?.(60);
+  if(bulkBusy)return;
+  // Each ISBN only once per batch (the camera keeps seeing a barcode while it's in view).
+  if(bulkSeen.has(isbn)){$('#bisbn').value='';const n=Date.now();if(n-(bulkSeen.get(isbn)||0)>4000){toast('Already scanned in this batch');bulkSeen.set(isbn,n)}return}
+  bulkBusy=true;bulkSeen.set(isbn,Date.now());$('#bisbn').value='';navigator.vibrate?.(60);chime();
   const li=document.createElement('li');li.innerHTML=`<span class="mut">Looking up ${isbn}…</span>`;$('#blist').prepend(li);
   try{
     let d=null;try{d=await api('/lookup/'+isbn)}catch(e){}
     const v=$('#bsh').value,w=v==='w';
     const body={title:d?.title||`ISBN ${isbn}`,authors:d?.authors||'',isbn:d?.isbn||isbn,cover:d?.cover||'',wishlist:w,shelf_id:w?null:+v,person_id:num($('#bap').value)};
     if(d)EXTRA.forEach(k=>{if(d[k]!=null&&d[k]!=='')body[k]=d[k]});
-    const {id}=await api('/books',{method:'POST',body});bulkAdded++;bulkCountText();
+    const {id}=await api('/books',{method:'POST',body});bulkAdded++;bulkCountText();li.dataset.isbn=isbn;
     li.innerHTML=`<div class="row" style="margin:0"><span><b style="font-weight:600">${esc(body.title)}</b>${d?`<br><span class="mut">${esc(body.authors)}</span>`:'<br><span class="hot">Not found, so it was added with just its ISBN. Fix it later in Edit book details.</span>'}</span><button class="danger" onclick="bulkUndo(${id},this)">Undo</button></div>`
-  }catch(e){li.innerHTML=`<span class="hot">${esc(e.message)}</span>`}
+  }catch(e){li.innerHTML=`<span class="hot">${esc(e.message)}</span>`;bulkSeen.delete(isbn)}
   finally{bulkBusy=false}}
-async function bulkUndo(id,btn){try{await api('/books/'+id,{method:'DELETE'});btn.closest('li').remove();bulkAdded--;bulkCountText()}catch(e){fail(e)}}
+async function bulkUndo(id,btn){try{await api('/books/'+id,{method:'DELETE'});const li=btn.closest('li');bulkSeen.delete(li.dataset.isbn);li.remove();bulkAdded--;bulkCountText()}catch(e){fail(e)}}
 const EXTRA=['subtitle','description','publisher','published','pages','subjects','series','series_index','language'];
 function saveNew(){
   const v=$('#sh').value,w=v==='w';
@@ -533,24 +584,76 @@ async function lockBtn(){
   }catch(e){fail(e)}}
 /* Accounts */
 let me=null,gateMode='login',accounts=[],editingUser=null;
-const isOwner=()=>me?.role==='admin';
+const isOwner=()=>me?.library?.role==='admin';
+let signupOpen=false,serverAccounts=[];
 function showGate(mode){
   gateMode=mode;document.querySelectorAll('dialog[open]').forEach(d=>d.close());
   document.body.classList.add('gated');$('#gate').hidden=false;$('#gateErr').hidden=true;
-  const setup=mode==='setup';
-  $('#gateMsg').textContent=setup?'Welcome! Create the owner account first. You can add accounts for everyone else in Settings.':'Log in to your library.';
-  $('#gp').autocomplete=setup?'new-password':'current-password';$('#gp2w').hidden=!setup;$('#gp2').required=setup;
-  $('#gateBtn').textContent=setup?'Create account':'Log in';$('#gu').focus()}
+  const fresh=mode!=='login';
+  $('#gateMsg').textContent={setup:'Welcome! Create the first account. It owns this library and runs the server; you can add everyone else in Settings.',
+    signup:'Enter the invite code you were given, then create your account. You’ll get your own library, which only you and the people you share it with can see.',
+    login:'Log in to your library.'}[mode];
+  $('#gp').autocomplete=fresh?'new-password':'current-password';$('#gp2w').hidden=!fresh;$('#gp2').required=fresh;
+  $('#gplw').hidden=$('#gcw').hidden=mode!=='signup';$('#gc').required=mode==='signup';
+  $('#gateBtn').textContent=fresh?'Create account':'Log in';
+  const sw=$('#gateSwitch');sw.hidden=!(mode==='signup'||(mode==='login'&&signupOpen));
+  sw.innerHTML=mode==='signup'?'Already have an account? <a href="#" onclick="showGate(\'login\');return false">Log in</a>':'Have an invite code? <a href="#" onclick="showGate(\'signup\');return false">Create an account</a>';
+  $('#gu').focus()}
 async function gateSubmit(){
   const err=$('#gateErr'),username=$('#gu').value.trim(),password=$('#gp').value;err.hidden=true;
-  if(gateMode==='setup'&&password!==$('#gp2').value){err.textContent='The two passwords don’t match.';err.hidden=false;return}
+  if(gateMode!=='login'&&password!==$('#gp2').value){err.textContent='The two passwords don’t match.';err.hidden=false;return}
   $('#gateBtn').disabled=true;
   try{
-    const r=await fetch('/api/auth/'+(gateMode==='setup'?'setup':'login'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    const body={username,password};if(gateMode==='signup'){body.library=$('#gpl').value.trim();body.code=$('#gc').value.trim()}
+    const r=await fetch('/api/auth/'+gateMode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'Something went wrong');
-    me=d.user;$('#gp').value=$('#gp2').value='';document.body.classList.remove('gated');$('#gate').hidden=true;start()
+    me=d.user;$('#gp').value=$('#gp2').value=$('#gpl').value=$('#gc').value='';document.body.classList.remove('gated');$('#gate').hidden=true;start()
   }catch(e){err.textContent=e.message;err.hidden=false}finally{$('#gateBtn').disabled=false}}
+async function refreshMe(){const st=await (await fetch('/api/auth/status')).json();if(!st.user)return showGate('login');me=st.user}
+function openLibs(){
+  if(!me)return;
+  $('#libList').innerHTML=me.libraries.map(l=>`<button onclick="switchLib(${l.id})"><span>${esc(l.name)}${l.id===me.library?.id?' <span class="mut">(open now)</span>':''}</span><span class="tag">${l.role==='admin'?'Owner':'Member'}</span></button>`).join('')||'<p class="mut">You’re not in any library yet.</p>';
+  $('#libs').showModal()}
+async function enterLibrary(msg){
+  await refreshMe();tab='shelves';shelf=null;arranging=false;setTok('');
+  person=store.get(personKey())||(me.library?.person_id?String(me.library.person_id):'');
+  $('#libs').close();scrollTo(0,0);render();if(msg)toast(msg)}
+async function switchLib(id){
+  if(id===me.library?.id)return $('#libs').close();
+  try{await api('/libraries/'+id+'/switch',{method:'POST'});const l=me.libraries.find(x=>x.id===id);await enterLibrary('Now in '+l.name)}catch(e){fail(e)}}
+async function newLibrary(){
+  const name=await ask({title:'New library',label:'Name, for example “Classroom” or “Book club”',ok:'Create'});if(!name||!name.trim())return;
+  try{await api('/libraries',{method:'POST',body:{name}});await enterLibrary('Created '+name.trim())}catch(e){fail(e)}}
+async function renameLibrary(){
+  const name=await ask({title:'Rename library',label:'Name',value:me.library.name,ok:'Save'});if(!name||!name.trim())return;
+  try{await api('/libraries/current',{method:'PATCH',body:{name}});await refreshMe();render()}catch(e){fail(e)}}
+async function leaveLibrary(){
+  if(!confirm(`Leave “${me.library.name}”? Its books stay with its other members, and you’ll need an owner to add you back.`))return;
+  try{await api('/libraries/current/leave',{method:'POST'});await enterLibrary('You left the library')}catch(e){fail(e)}}
+async function deleteLibrary(){
+  const name=me.library.name;
+  const typed=await ask({title:'Delete this library',label:`This permanently deletes every shelf, book and person in “${name}”, for everyone in it. Type its name to confirm.`,ok:'Delete'});
+  if(typed===null)return;if(typed.trim()!==name)return toast('The name didn’t match, so nothing was deleted',true);
+  try{await api('/libraries/current',{method:'DELETE',body:{name}});await enterLibrary(`Deleted “${name}”`)}catch(e){fail(e)}}
+async function setCanInvite(id,on){
+  const a=serverAccounts.find(x=>x.id===id);
+  try{await api('/server/accounts/'+id,{method:'PATCH',body:{can_invite:on}});toast(on?`${a.username} can now invite people`:`${a.username} can no longer invite people`)}catch(e){fail(e)}}
+async function createInvite(){
+  try{
+    const note=$('#invNote').value.trim(),{code}=await api('/invites',{method:'POST',body:{note}});
+    render();await new Promise(r=>setTimeout(r,400));
+    const box=$('#newCode');if(!box)return;
+    const msg=`You're invited to my Home Library! Go to ${location.origin}, tap “Create an account” and use this invite code: ${code}`;
+    box.innerHTML=`<div class="note tip"><b>Invite code${note?' for '+esc(note):''}</b><p style="font:600 1.4rem ui-monospace,monospace;letter-spacing:.08em;margin:.4rem 0">${esc(code)}</p><p class="mut" style="margin:.25rem 0">Copy it now: for safety it can’t be shown again. It works once, within 14 days.</p><div class="row wrap"><button onclick="copyText(this.dataset.t)" data-t="${esc(code)}">Copy code</button>${navigator.share?`<button onclick="navigator.share({text:this.dataset.t}).catch(()=>{})" data-t="${esc(msg)}">Share…</button>`:`<button onclick="copyText(this.dataset.t)" data-t="${esc(msg)}">Copy invite message</button>`}</div></div>`;
+    box.scrollIntoView({block:'center'})
+  }catch(e){fail(e)}}
+async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Copied')}catch(e){toast('Copy didn’t work here. Press and hold the code to copy it instead.',true)}}
+async function cancelInvite(id){if(!confirm('Cancel this invite code? It will stop working.'))return;try{await api('/invites/'+id,{method:'DELETE'});toast('Invite cancelled');render()}catch(e){fail(e)}}
+async function deleteAccount(id){
+  const a=serverAccounts.find(x=>x.id===id);
+  if(!confirm(`Delete the account ${a.username}? They’re removed from every library they’re in. Their libraries’ books stay with the other members.`))return;
+  try{await api('/server/accounts/'+id,{method:'DELETE'});toast('Account deleted');render()}catch(e){fail(e)}}
 async function logout(){
   try{await api('/auth/logout',{method:'POST'})}catch(e){}
   me=null;setTok('');tab='shelves';shelf=null;$('main').innerHTML='';$('#gu').value='';showGate('login')}
@@ -562,33 +665,32 @@ async function changeMyPassword(){
   try{await api('/auth/password',{method:'POST',body:{current,password:pw}});toast('Password changed. Your other devices are logged out.')}catch(e){fail(e)}}
 function openUser(id){
   const u=accounts.find(x=>x.id===id);editingUser=u||null;
-  $('#udT').textContent=u?u.username:'Add account';$('#udNameW').hidden=!!u;$('#udName').value='';$('#udPw').value='';
-  $('#udPwL').textContent=u?'Set a new password (leave blank to keep theirs)':'Password (8 or more characters)';
+  $('#udT').textContent=u?u.username:'Add someone';$('#udNameW').hidden=!!u;$('#udName').value='';$('#udPw').value='';
+  $('#udPwW').hidden=!!u&&!u.password_resettable;$('#udPwNote').hidden=!u||u.password_resettable;
+  $('#udPwL').textContent=u?'Set a new password (leave blank to keep theirs)':'Password for a new account (leave blank to add someone who already has one)';
   $('#udRole').value=u?u.role:'member';$('#udPerson').innerHTML=personOpts(u?u.person_id:'','Everyone');
-  $('#udDel').hidden=!u||u.id===me.id;$('#ud').showModal()}
+  $('#udDel').textContent='Remove from library';$('#udDel').hidden=!u||u.id===me.id;$('#ud').showModal()}
 async function saveUser(){
   const body={role:$('#udRole').value,person_id:num($('#udPerson').value)},pw=$('#udPw').value;
   try{
-    if(editingUser){if(pw)body.password=pw;await api('/users/'+editingUser.id,{method:'PATCH',body});toast(pw?'Saved. They’ll need the new password to log in.':'Saved')}
-    else{await api('/users',{method:'POST',body:{...body,username:$('#udName').value.trim(),password:pw}});toast('Account added')}
-    $('#ud').close();
-    if(editingUser?.id===me.id&&body.role!=='admin')me.role=body.role;
-    render()
+    if(editingUser){if(pw)body.password=pw;await api('/members/'+editingUser.id,{method:'PATCH',body});toast(pw?'Saved. They’ll need the new password to log in.':'Saved')}
+    else{await api('/members',{method:'POST',body:{...body,username:$('#udName').value.trim(),password:pw}});toast(pw?'Account created':'Added to the library')}
+    $('#ud').close();if(editingUser?.id===me.id)await refreshMe();render()
   }catch(e){fail(e)}}
 async function removeUser(){
-  if(!confirm(`Remove ${editingUser.username}'s account? Their books and shelves stay.`))return;
-  try{await api('/users/'+editingUser.id,{method:'DELETE'});$('#ud').close();toast('Account removed');render()}catch(e){fail(e)}}
+  if(!confirm(`Remove ${editingUser.username} from this library? Their account, and any other libraries they're in, stay.`))return;
+  try{await api('/members/'+editingUser.id,{method:'DELETE'});$('#ud').close();toast('Removed from the library');render()}catch(e){fail(e)}}
 let started=false;
 function start(){
   // Start out showing the logged-in person's books, unless this device already chose.
-  if(!store.get('person')&&me.person_id){person=String(me.person_id);store.set('person',person)}
+  person=store.get(personKey())||(me.library?.person_id?String(me.library.person_id):'');
   render();if(started)return;started=true;
   /* Warn if the library would be wiped the next time the container is replaced. */
   api('/storage').then(r=>{if(r.status!=='temporary')return;const w=$('#warn');w.hidden=false;
   w.innerHTML='<div class="note"><b>Your library isn’t being saved permanently.</b> The app’s data folder is temporary storage, so updating or redeploying the app will erase every book, shelf, person and key. On TrueNAS: Apps → home-library → Edit → Storage, and mount <code>/data</code> from a Host Path on a dataset. Download a backup from Settings first, then restore it afterwards.</div>'}).catch(()=>{})}
 (async function boot(){
   try{
-    const st=await (await fetch('/api/auth/status')).json();
+    const st=await (await fetch('/api/auth/status')).json();signupOpen=st.signup_open;
     if(st.setup_needed)return showGate('setup');
     if(!st.user)return showGate('login');
     me=st.user;start()

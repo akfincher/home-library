@@ -67,6 +67,39 @@ MIGRATIONS = [
     CREATE INDEX changes_at ON changes(at);
     INSERT INTO shelves(name) SELECT 'Main' WHERE NOT EXISTS (SELECT 1 FROM shelves);
     """,
+    # 7: many libraries on one server. Everything so far becomes library 1, its
+    #    accounts become its members (owners stay owners and also run the server),
+    #    and the restricted-section PIN moves onto the library.
+    """
+    CREATE TABLE libraries(id INTEGER PRIMARY KEY, name TEXT NOT NULL, pin TEXT);
+    INSERT INTO libraries(id, name, pin) VALUES(1, 'Home Library', (SELECT v FROM settings WHERE k='pin'));
+    DELETE FROM settings WHERE k='pin';
+    CREATE TABLE memberships(library_id INTEGER NOT NULL, user_id INTEGER NOT NULL, role TEXT NOT NULL DEFAULT 'member',
+      person_id INTEGER, PRIMARY KEY(library_id, user_id));
+    INSERT INTO memberships(library_id, user_id, role, person_id) SELECT 1, id, role, person_id FROM users;
+    ALTER TABLE users ADD COLUMN site_admin INTEGER NOT NULL DEFAULT 0;
+    UPDATE users SET site_admin=1 WHERE role='admin';
+    ALTER TABLE sessions ADD COLUMN library_id INTEGER;
+    ALTER TABLE people ADD COLUMN library_id INTEGER NOT NULL DEFAULT 1;
+    ALTER TABLE shelves ADD COLUMN library_id INTEGER NOT NULL DEFAULT 1;
+    ALTER TABLE books ADD COLUMN library_id INTEGER NOT NULL DEFAULT 1;
+    ALTER TABLE changes ADD COLUMN library_id INTEGER NOT NULL DEFAULT 1;
+    CREATE INDEX people_library ON people(library_id);
+    CREATE INDEX shelves_library ON shelves(library_id);
+    CREATE INDEX books_library ON books(library_id);
+    CREATE INDEX changes_library ON changes(library_id, id);
+    CREATE INDEX memberships_user ON memberships(user_id);
+    """,
+    # 8: sign-up only with an invite code. Codes are single-use and expire; only a hash
+    #    is stored. The administrator chooses which accounts may create them.
+    """
+    CREATE TABLE invites(id INTEGER PRIMARY KEY, code_hash TEXT NOT NULL UNIQUE, hint TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '', created_by INTEGER NOT NULL, created_at REAL NOT NULL, expires_at REAL NOT NULL,
+      used_by INTEGER, used_at REAL, revoked INTEGER NOT NULL DEFAULT 0);
+    ALTER TABLE users ADD COLUMN can_invite INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN invited_by INTEGER;
+    DELETE FROM settings WHERE k='signups';
+    """,
 ]
 
 

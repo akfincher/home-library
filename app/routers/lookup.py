@@ -4,8 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import auth, db, metadata
-from ..changelog import log
-from ..security import require_admin
 
 router = APIRouter(prefix="/api")
 
@@ -41,7 +39,7 @@ class Key(BaseModel):
     key: str = Field("", max_length=200)
 
 
-@router.put("/sources/{source}", dependencies=[Depends(auth.require_owner), Depends(require_admin)])
+@router.put("/sources/{source}", dependencies=[Depends(auth.require_site_admin)])
 def set_key(source: str, b: Key):
     """Checks the key with the source before saving it. An empty key removes it."""
     if source not in metadata.KEYED:
@@ -51,7 +49,6 @@ def set_key(source: str, b: Key):
     name = metadata.KEYED[source].name
     if not key:
         db.delete_setting(setting)
-        log(f"Removed the {name} key", admin=True)
         return {"ok": True}
     try:
         metadata.check_key(source, key)
@@ -60,5 +57,4 @@ def set_key(source: str, b: Key):
     except ConnectionError as e:
         raise HTTPException(502, str(e))
     db.put_setting(setting, key)
-    log(f"Saved a {name} key", admin=True)
     return {"ok": True}

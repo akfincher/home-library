@@ -9,12 +9,13 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, changelog, config, db, security, storage
-from .routers import account, backup, books, lookup, organize, people, pin, shelves, users
+from . import auth, changelog, config, context, db, security, storage
+from .routers import (account, backup, books, invites, libraries, lookup, members, organize, people, pin,
+                      server, shelves)
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 # API paths anyone may use without logging in.
-PUBLIC_API = {"/api/auth/status", "/api/auth/login", "/api/auth/setup", "/api/about"}
+PUBLIC_API = {"/api/auth/status", "/api/auth/login", "/api/auth/setup", "/api/auth/signup", "/api/about"}
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -24,6 +25,7 @@ def create_app(db_path: str | None = None) -> FastAPI:
         db.init(db_path or config.DB_PATH)
         security.reset()
         auth.reset()
+        account.reset()
         problem = auth.create_owner_from_env()
         if problem:
             print(f"Home Library: {problem}", flush=True)
@@ -45,10 +47,11 @@ def create_app(db_path: str | None = None) -> FastAPI:
             if not user:
                 return JSONResponse({"detail": "Please log in."}, 401)
             request.state.user = user
-            changelog.CURRENT_USER.set(user)
+            context.USER.set(user)
+            context.LIBRARY.set(user["library"])
         return await call_next(request)
 
-    for r in (account, users, pin, people, shelves, books, lookup, backup, organize):
+    for r in (account, invites, members, libraries, server, pin, people, shelves, books, lookup, backup, organize):
         app.include_router(r.router)
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
@@ -61,9 +64,9 @@ def create_app(db_path: str | None = None) -> FastAPI:
         return {"license": "AGPL-3.0-or-later", "source": config.SOURCE_URL}
 
     @app.get("/api/changes")
-    def changes(request: Request, before_id: int | None = None, x_unlock: str | None = Header(None)):
-        """The change history, newest first, 50 at a time."""
-        return changelog.entries(request.state.user["role"] == "admin", security.is_unlocked(x_unlock), before_id)
+    def changes(x_unlock: str | None = Header(None)):
+        """The current library's last 50 changes, newest first."""
+        return changelog.entries(context.library()["role"] == "admin", security.is_unlocked(x_unlock))
 
     @app.get("/api/storage")
     def storage_status():

@@ -9,14 +9,14 @@ import time
 
 from fastapi import Header, HTTPException
 
-from . import config, db
+from . import config, context, db
 
 _cache: dict = {}
 
 
 def reset() -> None:
     _cache.clear()
-    limiter.reset()
+    _limiters.clear()
 
 
 def _secret() -> str:
@@ -29,56 +29,66 @@ def _secret() -> str:
     return _cache["secret"]
 
 
-def pin_is_set() -> bool:
-    return bool(db.get_setting("pin"))
+def _stored(lib_id: int) -> str:
+    r = db.one("SELECT pin FROM libraries WHERE id=?", (lib_id,))
+    return (r or {}).get("pin") or ""
+
+
+def pin_is_set(lib_id: int | None = None) -> bool:
+    return bool(_stored(lib_id if lib_id is not None else context.lib()))
 
 
 def _hash(pin: str, salt: str) -> str:
     return hashlib.pbkdf2_hmac("sha256", pin.encode(), bytes.fromhex(salt), 200_000).hex()
 
 
-def check_pin(pin: str) -> bool:
-    stored = db.get_setting("pin")
+def check_pin(pin: str, lib_id: int | None = None) -> bool:
+    stored = _stored(lib_id if lib_id is not None else context.lib())
     if not stored:
         return False
     salt, h = stored.split(":")
     return hmac.compare_digest(h, _hash(pin, salt))
 
 
-def save_pin(pin: str) -> None:
+def save_pin(pin: str, lib_id: int | None = None) -> None:
     salt = secrets.token_hex(16)
-    db.put_setting("pin", f"{salt}:{_hash(pin, salt)}")
+    db.run("UPDATE libraries SET pin=? WHERE id=?", (f"{salt}:{_hash(pin, salt)}", lib_id or context.lib()))
 
 
-def _sign(exp: str) -> str:
-    # The stored PIN hash is part of the message, so changing the PIN
-    # invalidates every unlock token issued before.
-    msg = f"{exp}:{db.get_setting('pin') or ''}"
+def _sign(exp: str, lib_id: int) -> str:
+    # The library and its stored PIN hash are part of the message, so a token
+    # only opens one library, and changing the PIN invalidates every earlier token.
+    msg = f"{exp}:{lib_id}:{_stored(lib_id)}"
     return hmac.new(_secret().encode(), msg.encode(), "sha256").hexdigest()
 
 
-def make_token() -> str:
+def make_token(lib_id: int | None = None) -> str:
+    lib_id = lib_id or context.lib()
     exp = str(int(time.time()) + config.UNLOCK_SECONDS)
-    return f"{exp}.{_sign(exp)}"
+    return f"{exp}.{_sign(exp, lib_id)}"
 
 
-def is_unlocked(tok: str | None) -> bool:
-    if not tok or not pin_is_set():
+def is_unlocked(tok: str | None, lib_id: int | None = None) -> bool:
+    if not tok:
+        return False
+    lib_id = lib_id or context.lib()
+    if not _stored(lib_id):
         return False
     try:
         exp, sig = tok.split(".")
-        return int(exp) > time.time() and hmac.compare_digest(sig, _sign(exp))
+        return int(exp) > time.time() and hmac.compare_digest(sig, _sign(exp, lib_id))
     except ValueError:
         return False
 
 
 class Limiter:
-    """Counts wrong PINs across all clients. After PIN_FREE_TRIES misses, each
+    """Counts wrong guesses across all clients. After PIN_FREE_TRIES misses, each
     further miss doubles the wait, up to PIN_MAX_WAIT seconds. A right PIN resets it.
     It is global rather than per address because behind a reverse proxy every
     request arrives from the same address anyway."""
 
-    def __init__(self):
+    def __init__(self, what: str = "PINs"):
+        self.what = what
         self._lock = threading.Lock()
         self.reset()
 
@@ -90,7 +100,7 @@ class Limiter:
         left = self.locked_until - time.time()
         if left > 0:
             wait = int(left) + 1
-            raise HTTPException(429, f"Too many wrong PINs. Try again in {wait} seconds.",
+            raise HTTPException(429, f"Too many wrong {self.what}. Try again in {wait} seconds.",
                                 headers={"Retry-After": str(wait)})
 
     def fail(self):
@@ -105,7 +115,12 @@ class Limiter:
             self.reset()
 
 
-limiter = Limiter()
+_limiters: dict[int, Limiter] = {}
+
+
+def limiter(lib_id: int | None = None) -> Limiter:
+    """Wrong PINs are counted per library."""
+    return _limiters.setdefault(lib_id or context.lib(), Limiter())
 
 
 def unlocked(x_unlock: str | None = Header(None)) -> bool:

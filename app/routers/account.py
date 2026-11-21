@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
-"""Logging in and out, first-time setup, and changing your own password."""
+"""Logging in and out, first-time setup, signing up, and changing your own password."""
+import sqlite3
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from .. import auth, db
-from ..changelog import log
+from . import invites
 
 router = APIRouter(prefix="/api/auth")
 
@@ -20,33 +22,70 @@ class NewPassword(BaseModel):
     password: str = Field(max_length=500)
 
 
+def _me(token: str) -> dict:
+    return auth.public(auth.user_for(token))
+
+
 @router.get("/status")
 def status(request: Request):
-    """Public: whether the owner account still needs creating, and who's logged in."""
+    """Public: whether the first account still needs creating, whether sign-up
+    (with an invite code) is possible, and who's logged in (with their libraries)."""
     user = auth.user_for(request.cookies.get(auth.COOKIE))
-    return {"setup_needed": not auth.has_users(), "user": auth.public(user) if user else None}
+    return {"setup_needed": not auth.has_users(), "signup_open": auth.has_users(),
+            "user": auth.public(user) if user else None}
 
 
 @router.post("/setup")
 def setup(b: Credentials, request: Request, response: Response):
-    """Creates the first account, an owner. Only works while there are no accounts."""
+    """Creates the first account. It owns the first library and runs the server.
+    Only works while there are no accounts."""
     username = auth.clean_username(b.username)
     auth.validate_password(b.password)
-    with db.connect() as c:
-        c.execute("BEGIN IMMEDIATE")  # two people racing to set up can't both win
-        if c.execute("SELECT 1 FROM users").fetchone():
-            raise HTTPException(409, "This library already has an owner. Log in instead.")
-        uid = c.execute("INSERT INTO users(username, password, role) VALUES(?,?,'admin')",
-                        (username, auth.hash_password(b.password))).lastrowid
-    auth.set_cookie(response, request, auth.start_session(uid))
-    return {"user": auth.public(db.one("SELECT * FROM users WHERE id=?", (uid,)))}
+    uid = auth.create_first_owner(username, b.password)
+    token = auth.start_session(uid, 1)
+    auth.set_cookie(response, request, token)
+    return {"user": _me(token)}
+
+
+class SignUp(Credentials):
+    code: str = Field("", max_length=40)
+    library: str = Field("", max_length=100)
+
+
+def reset() -> None:
+    invites.guesses.reset()
+
+
+@router.post("/signup")
+def signup(b: SignUp, request: Request, response: Response):
+    """Creates an account with its own library. Needs an invite code from someone
+    the server's administrator allows to invite people."""
+    if not auth.has_users():
+        raise HTTPException(409, "Create the first account instead.")
+    if not b.code.strip():
+        raise HTTPException(403, "You need an invite code to create an account.")
+    username = auth.clean_username(b.username)
+    auth.validate_password(b.password)
+    try:
+        with db.connect() as c:
+            uid = c.execute("INSERT INTO users(username, password, role) VALUES(?,?,'member')",
+                            (username, auth.hash_password(b.password))).lastrowid
+            # In the same transaction: a wrong code means no account, and a code can't be used twice.
+            invites.redeem(c, b.code, uid)
+    except sqlite3.IntegrityError:
+        raise HTTPException(400, "That username is already taken.")
+    lib_id = auth.new_library(b.library.strip() or f"{username}'s Library", uid)
+    token = auth.start_session(uid, lib_id)
+    auth.set_cookie(response, request, token)
+    return {"user": _me(token)}
 
 
 @router.post("/login")
 def login(b: Credentials, request: Request, response: Response):
     user = auth.login(b.username, b.password)
-    auth.set_cookie(response, request, auth.start_session(user["id"]))
-    return {"user": auth.public(user)}
+    token = auth.start_session(user["id"])
+    auth.set_cookie(response, request, token)
+    return {"user": _me(token)}
 
 
 @router.post("/logout")
@@ -68,5 +107,4 @@ def change_password(b: NewPassword, request: Request, user: dict = Depends(auth.
     auth.validate_password(b.password)
     db.run("UPDATE users SET password=? WHERE id=?", (auth.hash_password(b.password), user["id"]))
     auth.end_all_sessions(user["id"], except_token=request.cookies.get(auth.COOKIE))
-    log("Changed their own password", admin=True)
     return {"ok": True}

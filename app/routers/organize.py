@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends
 
 from .. import auth, db
 from ..changelog import log
+from ..context import lib
 from ..schemas import OrganizeIn
 from ..security import require_admin, unlocked
 from .people import ensure_person
@@ -60,8 +61,9 @@ def _sort_key(sort: str):
 
 def _books(o: OrganizeIn, is_unlocked: bool) -> list[dict]:
     """Every book on a shelf (not the wish list) that the organizer may move."""
-    sql = "SELECT b.*, p.name AS person FROM books b LEFT JOIN people p ON p.id=b.person_id WHERE b.shelf_id IS NOT NULL AND b.wishlist=0"
-    args = []
+    sql = ("SELECT b.*, p.name AS person FROM books b LEFT JOIN people p ON p.id=b.person_id "
+           "WHERE b.library_id=? AND b.shelf_id IS NOT NULL AND b.wishlist=0")
+    args = [lib()]
     if o.person_id is not None:
         sql += " AND b.person_id=?"
         args.append(o.person_id)
@@ -117,7 +119,8 @@ def _plan(o: OrganizeIn, is_unlocked: bool):
 @router.post("/preview")
 def preview(o: OrganizeIn, is_unlocked: bool = Depends(unlocked)):
     books, groups = _plan(o, is_unlocked)
-    shelf_of = {(s["name"].lower(), s["person_id"]): s["id"] for s in db.rows("SELECT * FROM shelves")}
+    shelf_of = {(s["name"].lower(), s["person_id"]): s["id"]
+                for s in db.rows("SELECT * FROM shelves WHERE library_id=?", (lib(),))}
     moves = sum(1 for (name, owner), bs in groups for b in bs
                 if b["shelf_id"] != shelf_of.get((name.lower(), owner)))
     return {"total": len(books), "moves": moves,
@@ -136,10 +139,10 @@ def apply(o: OrganizeIn, is_unlocked: bool = Depends(unlocked)):
     moved = 0
     with db.connect() as c:
         for (name, owner), bs in groups:
-            row = c.execute("SELECT id FROM shelves WHERE name=? COLLATE NOCASE AND person_id IS ?",
-                            (name, owner)).fetchone()
-            sid = row[0] if row else c.execute("INSERT INTO shelves(name, person_id, sort) VALUES(?,?,?)",
-                                               (name, owner, sort)).lastrowid
+            row = c.execute("SELECT id FROM shelves WHERE library_id=? AND name=? COLLATE NOCASE AND person_id IS ?",
+                            (lib(), name, owner)).fetchone()
+            sid = row[0] if row else c.execute("INSERT INTO shelves(name, person_id, sort, library_id) VALUES(?,?,?,?)",
+                                               (name, owner, sort, lib())).lastrowid
             c.execute("UPDATE shelves SET sort=? WHERE id=?", (sort, sid))
             ids = {b["id"] for b in bs}
             # Books already on this shelf that aren't being organized keep their places at the front.
@@ -148,8 +151,8 @@ def apply(o: OrganizeIn, is_unlocked: bool = Depends(unlocked)):
             for i, b in enumerate(sorted(bs, key=_sort_key(sort))):
                 moved += b["shelf_id"] != sid
                 c.execute("UPDATE books SET shelf_id=?, position=? WHERE id=?", (sid, start + i + 1, b["id"]))
-        empty = c.execute("SELECT COUNT(*) FROM shelves WHERE id NOT IN "
-                          "(SELECT shelf_id FROM books WHERE shelf_id IS NOT NULL)").fetchone()[0]
+        empty = c.execute("SELECT COUNT(*) FROM shelves WHERE library_id=? AND id NOT IN "
+                          "(SELECT shelf_id FROM books WHERE shelf_id IS NOT NULL)", (lib(),)).fetchone()[0]
     how = {"genre": "genre", "author": "author", "series": "series", "level": "reading level", "person": "whose book it is"}
     who = db.one("SELECT name FROM people WHERE id=?", (o.person_id,)) if o.person_id else None
     log(f"Organized {who['name'] + chr(39) + 's books' if who else 'the library'} by {how[o.rule]}: "

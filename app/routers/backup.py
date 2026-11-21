@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
-"""Export, backup and restore. All of these include restricted books, so they
-need the PIN once one is set."""
+"""Export, backup and restore of the current library. These include restricted
+books, so they need the PIN once one is set. The whole-database file holds
+every library on the server, so only the server's administrator can download it."""
 import csv
 import io
 import os
@@ -13,12 +14,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.background import BackgroundTask
 
-from .. import db
-from .. import auth
+from .. import auth, db
 from ..changelog import log
+from ..context import lib
 from ..security import require_admin
 
-router = APIRouter(prefix="/api", dependencies=[Depends(auth.require_owner), Depends(require_admin)])
+router = APIRouter(prefix="/api")
+OWNER = [Depends(auth.require_owner), Depends(require_admin)]
 
 # 2: rating/spicy 0 is a real rating and null means not rated. In version 1, 0 meant not rated.
 EXPORT_VERSION = 2
@@ -38,19 +40,19 @@ def _attachment(ext: str) -> dict:
     return {"Content-Disposition": f'attachment; filename="home-library-{time.strftime("%Y-%m-%d")}.{ext}"'}
 
 
-@router.get("/export.json")
+@router.get("/export.json", dependencies=OWNER)
 def export_json():
     data = {"app": "home-library", "version": EXPORT_VERSION, "exported_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     for table, cols in COLUMNS.items():
-        data[table] = db.rows(f"SELECT {', '.join(cols)} FROM {table} ORDER BY id")
+        data[table] = db.rows(f"SELECT {', '.join(cols)} FROM {table} WHERE library_id=? ORDER BY id", (lib(),))
     return JSONResponse(data, headers=_attachment("json"))
 
 
-@router.get("/export.csv")
+@router.get("/export.csv", dependencies=OWNER)
 def export_csv():
     rows = db.rows("SELECT b.*, s.name AS shelf, p.name AS person FROM books b "
                    "LEFT JOIN shelves s ON s.id=b.shelf_id LEFT JOIN people p ON p.id=b.person_id "
-                   "ORDER BY b.title COLLATE NOCASE")
+                   "WHERE b.library_id=? ORDER BY b.title COLLATE NOCASE", (lib(),))
     out = io.StringIO()
     w = csv.DictWriter(out, fieldnames=CSV_COLUMNS, extrasaction="ignore")
     w.writeheader()
@@ -59,7 +61,7 @@ def export_csv():
     return Response("﻿" + out.getvalue(), media_type="text/csv; charset=utf-8", headers=_attachment("csv"))
 
 
-@router.get("/backup.db")
+@router.get("/backup.db", dependencies=[Depends(auth.require_site_admin)])
 def backup_db():
     fd, tmp = tempfile.mkstemp(suffix=".db")
     os.close(fd)
@@ -68,31 +70,44 @@ def backup_db():
                         background=BackgroundTask(os.remove, tmp))
 
 
-@router.post("/import")
+def _insert(c, table: str, row: dict) -> int:
+    keys = list(row)
+    return c.execute(f"INSERT INTO {table}({', '.join(keys)}) VALUES({', '.join('?' * len(keys))})",
+                     [row[k] for k in keys]).lastrowid
+
+
+@router.post("/import", dependencies=OWNER)
 def import_json(data: dict):
-    """Replaces everything with the contents of a JSON export. A copy of the
-    current database is saved next to it first."""
+    """Replaces this library's people, shelves and books with a JSON export.
+    Everything gets new ids, so a backup can be restored into any library. A copy
+    of the database is saved next to it first."""
     if data.get("app") != "home-library" or data.get("version") not in (1, EXPORT_VERSION):
         raise HTTPException(400, "That file isn't a Home Library backup this version can read.")
     for table in COLUMNS:
         if not isinstance(data.get(table), list) or not all(isinstance(r, dict) for r in data[table]):
             raise HTTPException(400, f"The backup's {table} list is missing or damaged.")
     db.backup_to(f"{db.path()}.pre-import-{db.stamp()}.bak")
+    library = lib()
     try:
         with db.connect() as c:
+            c.execute("UPDATE memberships SET person_id=NULL WHERE library_id=?", (library,))
             for table in ("books", "shelves", "people"):
-                c.execute(f"DELETE FROM {table}")
-            for table, cols in COLUMNS.items():
-                for r in data[table]:
-                    if table == "books" and data["version"] == 1:
-                        r = {**r, **{k: None for k in ("rating", "spicy") if not r.get(k)}}
-                    # Only the columns the file has, so backups from older versions get the defaults.
-                    keys = [k for k in cols if k in r]
-                    c.execute(f"INSERT INTO {table}({', '.join(keys)}) VALUES({', '.join('?' * len(keys))})",
-                              [r[k] for k in keys])
+                c.execute(f"DELETE FROM {table} WHERE library_id=?", (library,))
+            # Only the columns the file has, so backups from older versions get the defaults.
+            pick = lambda table, r: {k: r[k] for k in COLUMNS[table] if k in r and k != "id"}
+            people = {r.get("id"): _insert(c, "people", {**pick("people", r), "library_id": library})
+                      for r in data["people"]}
+            shelves = {}
+            for r in data["shelves"]:
+                row = {**pick("shelves", r), "library_id": library, "person_id": people.get(r.get("person_id"))}
+                shelves[r.get("id")] = _insert(c, "shelves", row)
+            for r in data["books"]:
+                row = {**pick("books", r), "library_id": library,
+                       "shelf_id": shelves.get(r.get("shelf_id")), "person_id": people.get(r.get("person_id"))}
+                if data["version"] == 1:
+                    row.update({k: None for k in ("rating", "spicy") if not r.get(k)})
+                _insert(c, "books", row)
     except sqlite3.Error as e:
         raise HTTPException(400, f"The backup couldn't be restored, so nothing was changed: {e}")
-    # Accounts aren't in backups; unlink any from people that no longer exist.
-    db.run("UPDATE users SET person_id=NULL WHERE person_id NOT IN (SELECT id FROM people)")
     log(f"Restored a backup ({len(data['books'])} books, {len(data['shelves'])} shelves)")
     return {table: len(data[table]) for table in COLUMNS}

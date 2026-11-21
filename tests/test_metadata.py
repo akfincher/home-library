@@ -135,10 +135,13 @@ def test_isbndb_key_is_checked_before_saving(c, web):
     assert c.get("/api/sources").json()[0]["enabled"] is False
 
 
-def test_isbndb_key_needs_pin_once_set(c, web):
+def test_only_the_server_admin_sets_api_keys(c, web):
     web({"isbndb.com": ISBNDB})
-    c.post("/api/pin", json={"pin": "1234"})
-    assert c.put("/api/sources/isbndb", json={"key": "good"}).status_code == 403
+    c.post("/api/members", json={"username": "mia", "password": "purple unicorn 7", "role": "admin"})
+    other_owner = TestClient(c.app)
+    other_owner.post("/api/auth/login", json={"username": "mia", "password": "purple unicorn 7"})
+    assert other_owner.put("/api/sources/isbndb", json={"key": "good"}).status_code == 403  # owns a library, not the server
+    assert c.put("/api/sources/isbndb", json={"key": "good"}).status_code == 200
 
 
 def test_new_fields_saved_and_searched(c):
