@@ -1,136 +1,278 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Home Library</title>
+<link rel="manifest" href="/static/manifest.json">
+<link rel="icon" href="/static/icon-192.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Library">
+<meta name="theme-color" content="#e9eef0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141b20" media="(prefers-color-scheme: dark)">
 <style>
-:root{--bg:#e9eef0;--ink:#1d2a33;--mut:#5b6b75;--card:#fff;--wood:#6b4a32;--acc:#0f6b6f;--hot:#c0392b;--line:#cdd6db}
+:root{--bg:#e9eef0;--ink:#1d2a33;--mut:#5b6b75;--card:#fff;--wood:#6b4a32;--acc:#0f6b6f;--hot:#c0392b;--line:#cdd6db;--nav:64px;--sb:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root{--bg:#141b20;--ink:#e6edf0;--mut:#93a3ad;--card:#1c262d;--wood:#8a6444;--acc:#2f8f94;--line:#2c3a43}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif;padding-bottom:5rem}
-h1,h2{font-family:"Iowan Old Style",Palatino,Georgia,serif;margin:0}
-header{display:flex;justify-content:space-between;align-items:center;padding:1rem 1rem .5rem;max-width:900px;margin:auto}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif;padding-bottom:calc(6rem + var(--sb))}
+h1,h2,h3{font-family:"Iowan Old Style",Palatino,Georgia,serif;margin:0;line-height:1.2}
+h3{margin-top:1.75rem;font-size:1.2rem}
+header{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:.5rem;padding:calc(.6rem + env(safe-area-inset-top,0px)) 1rem .6rem;max-width:900px;margin:auto}
+header h1{flex:1;min-width:0;font-size:clamp(1.3rem,5.5vw,2rem);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header select{width:auto;max-width:9rem}
 nav{display:flex;gap:.5rem;padding:0 1rem;max-width:900px;margin:auto}
+nav svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-4px;margin-right:.3rem}
 main{padding:1rem;max-width:900px;margin:auto}
-button,input,select,textarea{font:inherit;color:inherit}
-button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.5rem .9rem;cursor:pointer}
+button,input,select,textarea{font:inherit;font-size:16px;color:inherit}
+button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.5rem .9rem;min-height:44px;cursor:pointer;touch-action:manipulation}
 button.p{background:var(--acc);border-color:var(--acc);color:#fff}
+button.wide{width:100%}
+button.danger{color:var(--hot)}
 nav button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .row{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin:.75rem 0}
-.list>button{display:block;width:100%;text-align:left;margin-bottom:.5rem;padding:.9rem}
-.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:.75rem;padding:1rem .75rem 0;border-bottom:14px solid var(--wood);margin:.75rem 0 1.5rem}
-.book{cursor:pointer;font-size:.78rem;line-height:1.25;padding-bottom:.6rem}
-.book img,.ph{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:2px 4px 4px 2px;background:var(--line);box-shadow:2px 3px 6px #0004;padding:.4rem;text-align:center;font-family:Palatino,Georgia,serif;margin-bottom:.3rem}
+.row button{white-space:nowrap}
+.wrap{flex-wrap:wrap;justify-content:flex-start}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.mut{color:var(--mut);font-size:.9rem}
+.list>button{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;margin-bottom:.5rem;padding:.9rem;min-height:56px}
+.list>button::after{content:"›";font-size:1.4rem;color:var(--mut);margin-left:.5rem}
+.item{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.4rem .4rem .4rem .9rem;margin:.5rem 0}
+.tag{font-size:.75rem;background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:.05rem .5rem;margin-left:.4rem;color:var(--mut);font-family:system-ui,sans-serif;font-weight:normal;vertical-align:middle}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:.75rem;padding:1rem .75rem 0;border-bottom:14px solid var(--wood);margin:.75rem 0 1.5rem}
+.book{cursor:pointer;font-size:.8rem;line-height:1.25;padding-bottom:.6rem;min-width:0}
+.book b{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.book img,.ph{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:2px 4px 4px 2px;background:var(--line);box-shadow:2px 3px 6px #0004;padding:.4rem;text-align:center;font-family:Palatino,Georgia,serif;margin-bottom:.3rem;overflow:hidden}
 .hot{color:var(--hot)}
-dialog{border:0;border-radius:12px;background:var(--card);color:var(--ink);width:min(94vw,460px);padding:1.25rem}
+dialog{border:0;border-radius:12px;background:var(--card);color:var(--ink);width:min(94vw,460px);padding:1.25rem 1.25rem 0;max-height:90dvh;overflow-y:auto;overscroll-behavior:contain}
 dialog::backdrop{background:#0008}
-label{display:block;margin:.6rem 0 .15rem;font-size:.85rem;color:var(--mut)}
-input,select,textarea{width:100%;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
-input[type=checkbox]{width:auto;margin-right:.4rem}
-.fab{position:fixed;right:1rem;bottom:1rem;border-radius:99px;padding:.8rem 1.2rem;box-shadow:0 4px 12px #0005}
+dialog h2{padding-right:1rem}
+.acts{position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--line);margin:1rem -1.25rem 0;padding:.75rem 1.25rem calc(.75rem + var(--sb))}
+label{display:block;margin:.75rem 0 .2rem;font-size:.85rem;color:var(--mut)}
+label.check{display:flex;align-items:center;min-height:44px;font-size:1rem;color:var(--ink)}
+input,select,textarea{width:100%;padding:.6rem;border:1px solid var(--line);border-radius:8px;background:var(--bg);min-height:44px}
+input[type=checkbox]{width:1.3rem;height:1.3rem;min-height:0;margin:0 .6rem 0 0}
+input[type=file]{padding:.5rem}
+.rate{display:flex;gap:.1rem}
+.rate button{font-size:1.6rem;line-height:1;min-width:44px;padding:0;background:none;border:0;filter:grayscale(1);opacity:.35}
+.rate button.on{filter:none;opacity:1}
+.star.on{color:#e0a100}
+.fab{position:fixed;right:1rem;bottom:calc(1rem + var(--sb));border-radius:99px;padding:.8rem 1.3rem;box-shadow:0 4px 12px #0005;z-index:4}
+#reader video{border-radius:8px}
+#toast{position:fixed;left:1rem;right:1rem;bottom:calc(5rem + var(--sb));max-width:420px;margin:auto;background:var(--ink);color:var(--bg);border-radius:10px;padding:.75rem 1rem;box-shadow:0 4px 16px #0006;z-index:10;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none}
+#toast.show{opacity:1;transform:none}
+#toast.err{background:var(--hot);color:#fff}
+@media(max-width:699px){
+  body{padding-bottom:calc(var(--nav) + 5.5rem + var(--sb))}
+  #lock .lbl{display:none}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);gap:0;padding:0 0 var(--sb);background:var(--card);border-top:1px solid var(--line);max-width:none}
+  nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;border-radius:0;background:none;min-height:var(--nav);font-size:.72rem;color:var(--mut)}
+  nav button[aria-pressed=true]{background:none;color:var(--acc);font-weight:600}
+  nav svg{width:24px;height:24px;margin:0}
+  .fab{bottom:calc(var(--nav) + .75rem + var(--sb))}
+  #toast{bottom:calc(var(--nav) + 4.5rem + var(--sb))}
+  dialog{width:100%;max-width:100%;margin:auto 0 0;border-radius:16px 16px 0 0;max-height:92dvh;padding:1.25rem 1rem 0}
+  .acts{margin:1rem -1rem 0;padding:.75rem 1rem calc(.75rem + var(--sb))}
+}
 </style></head><body>
-<header><h1>Home Library</h1><button id="lock" onclick="lockBtn()"></button></header>
-<nav>
-<button data-t="shelves" onclick="go('shelves')">Shelves</button>
-<button data-t="wish" onclick="go('wish')">Wish list</button>
-<button data-t="search" onclick="go('search')">Search</button>
+<header><h1>Home Library</h1>
+<select id="who" aria-label="Whose books to show" onchange="setPerson(this.value)" hidden></select>
+<button id="lock" onclick="lockBtn()"></button></header>
+<nav aria-label="Sections">
+<button data-t="shelves" onclick="go('shelves')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5.5l3.5-1 3 14.5-3.5 1z"/></svg>Shelves</button>
+<button data-t="wish" onclick="go('wish')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Wish list</button>
+<button data-t="search" onclick="go('search')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5a6 6 0 1 0 0 12a6 6 0 1 0 0-12zM16 16l4 4"/></svg>Search</button>
+<button data-t="settings" onclick="go('settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9M15 5v4M9 15v4"/></svg>Settings</button>
 </nav>
 <main></main>
-<button class="p fab" onclick="openAdd()">Add book</button>
+<button class="p fab" onclick="openAdd()">+ Add book</button>
+<div id="toast" role="status" aria-live="polite"></div>
 
-<dialog id="add"><h2>Add book</h2>
-<label for="isbn">ISBN</label>
-<div class="row" style="margin:0"><input id="isbn" inputmode="numeric"><button onclick="lookup()">Look up</button></div>
-<button onclick="scan()" style="margin-top:.5rem">Scan barcode</button><div id="reader"></div>
-<label for="t">Title</label><input id="t">
-<label for="a">Author</label><input id="a">
+<dialog id="add" aria-labelledby="addT"><h2 id="addT">Add book</h2>
+<button class="p wide" onclick="scan()" style="margin-top:1rem">📷 Scan barcode</button><div id="reader" style="margin-top:.5rem"></div>
+<label for="isbn">Or type the ISBN</label>
+<div class="row" style="margin:0"><input id="isbn" inputmode="numeric" enterkeyhint="search" autocomplete="off" onkeydown="if(event.key==='Enter')lookup()"><button onclick="lookup()">Look up</button></div>
+<label for="t">Title</label><input id="t" autocapitalize="words" enterkeyhint="next">
+<label for="a">Author</label><input id="a" autocapitalize="words" enterkeyhint="next">
 <label for="sh">Shelf</label><select id="sh"></select>
-<div class="row"><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveNew()">Add book</button></div>
+<label for="ap">Whose book</label><select id="ap"></select>
+<div class="row acts"><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveNew()">Add book</button></div>
 </dialog>
 
-<dialog id="ed"><h2 id="et"></h2>
-<label for="esh">Shelf</label><select id="esh"></select>
-<label for="er">Rating (0-5)</label><input id="er" type="number" min="0" max="5">
-<label for="es">Spicy rating (0-5)</label><input id="es" type="number" min="0" max="5">
+<dialog id="ed" aria-labelledby="et"><h2 id="et"></h2><p id="ea" class="mut" style="margin:.25rem 0 0"></p>
+<div class="two"><div><label for="esh">Shelf</label><select id="esh"></select></div><div><label for="epp">Whose book</label><select id="epp"></select></div></div>
+<label id="erL">Rating</label><div class="rate" id="er" role="group" aria-labelledby="erL"></div>
+<label id="esL">Spicy rating</label><div class="rate" id="es" role="group" aria-labelledby="esL"></div>
 <label for="ev">Review</label><textarea id="ev" rows="4"></textarea>
-<label for="el">AR level</label><input id="el" type="number" step="0.1">
-<label for="ep">AR points</label><input id="ep" type="number" step="0.5">
-<label><input id="ex" type="checkbox">Restricted section</label>
-<div class="row"><button onclick="del()">Delete</button><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveEdit()">Save changes</button></div>
+<div class="two"><div><label for="el">AR level</label><input id="el" type="number" inputmode="decimal" step="0.1" min="0"></div><div><label for="ep">AR points</label><input id="ep" type="number" inputmode="decimal" step="0.5" min="0"></div></div>
+<label class="check"><input id="ex" type="checkbox">Restricted section</label>
+<div class="row acts"><button class="danger" onclick="del()">Delete</button><span style="flex:1"></span><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveEdit()">Save</button></div>
 </dialog>
+
+<dialog id="sd" aria-labelledby="sdt"><h2 id="sdt">New shelf</h2>
+<label for="sn">Name</label><input id="sn" autocapitalize="words" enterkeyhint="done">
+<label for="so">Belongs to</label><select id="so"></select>
+<div class="row acts"><button id="sdx" class="danger" onclick="delShelf()">Delete</button><span style="flex:1"></span><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveShelf()">Save</button></div>
+</dialog>
+
+<dialog id="ask" aria-labelledby="askT"><form method="dialog"><h2 id="askT"></h2>
+<label for="askI" id="askL"></label><input id="askI" autocomplete="off">
+<div class="row acts"><button type="button" onclick="this.closest('dialog').close()">Cancel</button><button class="p" value="ok" id="askOk">OK</button></div>
+</form></dialog>
 
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
-let tab='shelves',shelf=null,sort='title',shelves=[],tok=localStorage.tok||'',cover='',editing=null,lastQ='';
+const store={get:k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+let tab='shelves',shelf=null,sort='title',shelves=[],people=[],person=store.get('person'),tok=store.get('tok'),cover='',editing=null,editingShelf=null,lastQ='',scanner=null,findTimer=0;
 const open=()=>tok&&+tok.split('.')[0]>Date.now()/1000;
+const setTok=t=>{tok=t;store.set('tok',t)};
 async function api(p,o={}){
   const r=await fetch('/api'+p,{method:o.method||'GET',headers:{'Content-Type':'application/json','X-Unlock':open()?tok:''},body:o.body?JSON.stringify(o.body):undefined});
   const d=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error(d.detail||'Something went wrong');
+  if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'Something went wrong');
   return d}
-const fail=e=>alert(e.message);
-const go=t=>{tab=t;shelf=null;render()};
+let toastTimer=0;
+function toast(msg,err){const t=$('#toast');t.textContent=msg;t.className='show'+(err?' err':'');t.setAttribute('role',err?'alert':'status');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='',err?5000:3000)}
+const fail=e=>toast(e.message,true);
+function ask({title,label,value='',pin=false,ok='OK'}){
+  const d=$('#ask'),i=$('#askI');
+  $('#askT').textContent=title;$('#askL').textContent=label;$('#askOk').textContent=ok;
+  i.type=pin?'password':'text';i.inputMode=pin?'numeric':'text';i.autocapitalize=pin?'off':'words';i.value=value;
+  d.returnValue='';d.showModal();i.focus();
+  return new Promise(res=>d.addEventListener('close',()=>res(d.returnValue==='ok'?i.value:null),{once:true}))}
+const go=t=>{tab=t;shelf=null;render();scrollTo(0,0)};
+const pq=(pre='?')=>person?pre+'person_id='+person:'';
+const setPerson=v=>{person=v;store.set('person',v);shelf=null;render()};
 const sorted=a=>[...a].sort((x,y)=>sort==='added'?y.id-x.id:sort==='author'?x.authors.localeCompare(y.authors)||x.title.localeCompare(y.title):x.title.localeCompare(y.title));
-const opts=sel=>shelves.map(s=>`<option value="${s.id}" ${s.id==sel?'selected':''}>${esc(s.name)}</option>`).join('')+`<option value="w" ${sel==='w'?'selected':''}>Wish list</option>`;
+const opts=sel=>shelves.map(s=>`<option value="${s.id}" ${s.id==sel?'selected':''}>${esc(s.name)}${s.person?' ('+esc(s.person)+')':''}</option>`).join('')+`<option value="w" ${sel==='w'?'selected':''}>Wish list</option>`;
+const personOpts=(sel,none)=>`<option value="">${none}</option>`+people.map(p=>`<option value="${p.id}" ${p.id==sel?'selected':''}>${esc(p.name)}</option>`).join('');
+const num=v=>v===''?null:+v;
+
+/* Tap-to-rate: tapping the current value again clears it. */
+function setRate(id,v){const el=$('#'+id);el.dataset.v=v;el.querySelectorAll('button').forEach((b,i)=>{b.classList.toggle('on',i<v);b.setAttribute('aria-pressed',i<v)})}
+function makeRate(id,sym,cls,noun){$('#'+id).innerHTML=[1,2,3,4,5].map(n=>`<button type="button" class="${cls}" aria-label="${n} ${noun}${n>1?'s':''}" onclick="setRate('${id}',${n}==$('#${id}').dataset.v?0:${n})">${sym}</button>`).join('')}
+makeRate('er','★','star','star');makeRate('es','🌶','','pepper');
+
 function card(b,showShelf){
   const img=b.cover?`<img src="${esc(b.cover)}" alt="" loading="lazy">`:`<div class="ph">${esc(b.title)}</div>`;
-  return `<div class="book" tabindex="0" onclick="edit(${b.id})" onkeydown="if(event.key==='Enter')edit(${b.id})">${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.rating?'<br>'+'★'.repeat(b.rating):''}${b.spicy?'<br><span class="hot">'+'🌶'.repeat(b.spicy)+'</span>':''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}</div>`}
+  return `<div class="book" role="button" tabindex="0" onclick="edit(${b.id})" onkeydown="if(event.key==='Enter')edit(${b.id})">${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.rating?'<br><span class="star on">'+'★'.repeat(b.rating)+'</span>':''}${b.spicy?'<br><span class="hot">'+'🌶'.repeat(b.spicy)+'</span>':''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}</div>`}
 async function render(){
   document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tab));
-  $('#lock').textContent=open()?'🔓 Lock restricted':'🔒 Restricted';
-  try{shelves=await api('/shelves')}catch(e){return fail(e)}
+  $('#lock').innerHTML=open()?'<span aria-hidden="true">🔓</span><span class="lbl"> Lock</span>':'<span aria-hidden="true">🔒</span><span class="lbl"> Restricted</span>';
+  $('#lock').setAttribute('aria-label',open()?'Lock the restricted section':'Open the restricted section');
+  try{people=await api('/people')}catch(e){return fail(e)}
+  if(person&&!people.some(p=>p.id==person))return setPerson('');
+  $('#who').innerHTML=personOpts(person,'Everyone');$('#who').hidden=!people.length;
+  try{shelves=await api('/shelves'+pq())}catch(e){return fail(e)}
   const m=$('main');
+  try{
   if(tab==='shelves'&&!shelf){
-    m.innerHTML=`<div class="row"><h2>Shelves</h2><button onclick="newShelf()">New shelf</button></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render()">${esc(s.name)} <small>(${s.count})</small></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
+    m.innerHTML=`<div class="row"><h2>Shelves</h2><button onclick="openShelf()">New shelf</button></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render();scrollTo(0,0)"><span>${esc(s.name)} <small class="mut">(${s.count})</small>${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</span></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
   if(tab==='shelves'){
     const s=shelves.find(x=>x.id===shelf);if(!s){shelf=null;return render()}
     const bs=sorted(await api('/books?shelf_id='+shelf));
-    m.innerHTML=`<div class="row"><button onclick="shelf=null;render()">‹ Shelves</button><select aria-label="Sort" onchange="sort=this.value;render()" style="width:auto">${['title','author','added'].map(o=>`<option ${o===sort?'selected':''}>${o}</option>`).join('')}</select></div><h2>${esc(s.name)}</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>This shelf is empty. Tap Add book.</p>'}</div>${s.count?'':`<button onclick="delShelf(${s.id})">Delete shelf</button>`}`;return}
+    m.innerHTML=`<div class="row"><button onclick="shelf=null;render()">‹ Shelves</button><span style="display:flex;gap:.5rem"><select aria-label="Sort by" onchange="sort=this.value;render()" style="width:auto">${[['title','Title'],['author','Author'],['added','Newest']].map(([v,l])=>`<option value="${v}" ${v===sort?'selected':''}>${l}</option>`).join('')}</select><button onclick="openShelf(${s.id})">Edit</button></span></div><h2>${esc(s.name)}${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>This shelf is empty. Tap Add book.</p>'}</div>`;return}
   if(tab==='wish'){
-    const bs=sorted(await api('/books?wishlist=1'));
+    const bs=sorted(await api('/books?wishlist=1'+pq('&')));
     m.innerHTML=`<h2>Wish list</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>Nothing on the wish list yet.</p>'}</div>`;return}
-  m.innerHTML=`<h2>Search</h2><input id="q" aria-label="Title or author" placeholder="Title or author" oninput="find()" value="${esc(lastQ)}" style="margin-top:.75rem"><div id="res" class="shelf"></div>`;find()}
+  if(tab==='settings')return await renderSettings(m);
+  m.innerHTML=`<h2>Search</h2><input id="q" type="search" enterkeyhint="search" aria-label="Title, author or ISBN" placeholder="Title, author or ISBN" oninput="clearTimeout(findTimer);findTimer=setTimeout(find,250)" value="${esc(lastQ)}" style="margin-top:.75rem"><div id="res" class="shelf"></div>`;find()
+  }catch(e){fail(e)}}
 async function find(){
-  lastQ=$('#q').value.trim();
-  const bs=lastQ?sorted(await api('/books?q='+encodeURIComponent(lastQ))):[];
-  $('#res').innerHTML=bs.map(b=>card(b,1)).join('')||`<p>${lastQ?'No matches.':'Search every shelf and the wish list.'}</p>`}
-function newShelf(){const n=prompt('Shelf name');if(n&&n.trim())api('/shelves',{method:'POST',body:{name:n}}).then(render,fail)}
-function delShelf(id){if(confirm('Delete this shelf?'))api('/shelves/'+id,{method:'DELETE'}).then(()=>{shelf=null;render()},fail)}
+  const q=$('#q');if(!q)return;lastQ=q.value.trim();
+  try{
+    const bs=lastQ?sorted(await api('/books?q='+encodeURIComponent(lastQ)+pq('&'))):[];
+    $('#res').innerHTML=bs.map(b=>card(b,1)).join('')||`<p>${lastQ?'No matches.':'Search every shelf and the wish list.'}</p>`
+  }catch(e){fail(e)}}
+
+/* Settings */
+async function renderSettings(m){
+  const {set}=await api('/pin-status');
+  m.innerHTML=`<h2>Settings</h2>
+  <h3>People</h3><p class="mut">Add the people in your household to give each their own shelves and wish list. Pick a person at the top to see only their books.</p>
+  ${people.map(p=>`<div class="row item"><span>${esc(p.name)}</span><span style="display:flex;gap:.4rem"><button onclick="renamePerson(${p.id})">Rename</button><button class="danger" onclick="delPerson(${p.id})">Remove</button></span></div>`).join('')||'<p>No people yet.</p>'}
+  <div class="row"><input id="np" placeholder="Name" aria-label="New person's name" autocapitalize="words" enterkeyhint="done" onkeydown="if(event.key==='Enter')addPerson()"><button onclick="addPerson()">Add</button></div>
+  <h3>Restricted section</h3><p class="mut">${set?'A PIN is set. Entering it opens the restricted section for a while, then it locks again.':'Set a PIN before marking any book as restricted.'}</p>
+  <button onclick="changePin(${set})">${set?'Change PIN':'Set PIN'}</button>
+  <h3>Backup</h3><p class="mut">${set?'Downloads include restricted books, so they need your PIN. ':''}The JSON file can be restored here later. The CSV opens in a spreadsheet.</p>
+  <div class="row wrap"><button onclick="dl('/export.json')">Backup (JSON)</button><button onclick="dl('/export.csv')">Spreadsheet (CSV)</button><button onclick="dl('/backup.db')">Database file</button></div>
+  <label for="imp">Restore from a JSON backup</label><input type="file" id="imp" accept=".json,application/json" onchange="restore(this)">
+  <p class="mut">Restoring replaces every shelf, book and person with what's in the file. The server keeps a copy of the current data first.</p>`}
+function addPerson(){const n=$('#np').value.trim();if(n)api('/people',{method:'POST',body:{name:n}}).then(()=>{toast(n+' added');render()},fail)}
+async function renamePerson(id){const p=people.find(x=>x.id===id),n=await ask({title:'Rename',label:'Name',value:p.name,ok:'Save'});if(n&&n.trim())api('/people/'+id,{method:'PATCH',body:{name:n}}).then(render,fail)}
+function delPerson(id){const p=people.find(x=>x.id===id);if(confirm(`Remove ${p.name}? Their shelves and books stay, and become shared.`))api('/people/'+id,{method:'DELETE'}).then(render,fail)}
+async function changePin(set){
+  try{
+    const current=set?await ask({title:'Change PIN',label:'Current PIN',pin:true,ok:'Next'}):'';if(set&&!current)return;
+    const pin=await ask({title:set?'Change PIN':'Set PIN',label:'New PIN (4 or more digits)',pin:true,ok:'Save'});if(!pin)return;
+    setTok((await api('/pin',{method:'POST',body:{pin,current}})).token);toast(set?'PIN changed':'PIN set');render()
+  }catch(e){fail(e)}}
+async function dl(path){
+  try{
+    const r=await fetch('/api'+path,{headers:{'X-Unlock':open()?tok:''}});
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.detail||'Download failed')}
+    const name=(r.headers.get('Content-Disposition')||'').match(/filename="(.+)"/)?.[1]||'home-library-backup';
+    const a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000)
+  }catch(e){fail(e)}}
+async function restore(input){
+  const f=input.files[0];input.value='';if(!f)return;
+  try{
+    let data;try{data=JSON.parse(await f.text())}catch(e){throw new Error("That file isn't valid JSON.")}
+    if(!confirm(`Replace everything with this backup (${(data.books||[]).length} books, ${(data.shelves||[]).length} shelves)?`))return;
+    const n=await api('/import',{method:'POST',body:data});toast(`Restored ${n.books} books, ${n.shelves} shelves and ${n.people} people`);render()
+  }catch(e){fail(e)}}
+
+/* Shelves */
+function openShelf(id){
+  const s=shelves.find(x=>x.id===id);editingShelf=s?s.id:null;
+  $('#sdt').textContent=s?'Edit shelf':'New shelf';$('#sn').value=s?s.name:'';
+  $('#so').innerHTML=personOpts(s?s.person_id:person,'Everyone (shared)');$('#sdx').hidden=!s;$('#sd').showModal()}
+function saveShelf(){
+  const body={name:$('#sn').value.trim(),person_id:num($('#so').value)};
+  if(!body.name)return toast('Enter a shelf name',true);
+  api(editingShelf?'/shelves/'+editingShelf:'/shelves',{method:editingShelf?'PUT':'POST',body}).then(()=>{$('#sd').close();render()},fail)}
+function delShelf(){if(confirm('Delete this shelf?'))api('/shelves/'+editingShelf,{method:'DELETE'}).then(()=>{$('#sd').close();shelf=null;render()},fail)}
+
+/* Books */
 function openAdd(){
-  $('#sh').innerHTML=opts(shelf||(tab==='wish'?'w':''));
+  $('#sh').innerHTML=opts(shelf||(tab==='wish'?'w':''));$('#ap').innerHTML=personOpts(person,'Nobody in particular');
   ['isbn','t','a'].forEach(i=>$('#'+i).value='');cover='';$('#add').showModal()}
 async function lookup(){
-  try{const d=await api('/lookup/'+encodeURIComponent($('#isbn').value));$('#t').value=d.title;$('#a').value=d.authors;cover=d.cover}
-  catch(e){alert('No match found. Enter the title and author by hand.')}}
+  const isbn=$('#isbn').value.trim();if(!isbn)return toast('Type or scan an ISBN first',true);
+  try{const d=await api('/lookup/'+encodeURIComponent(isbn));$('#t').value=d.title;$('#a').value=d.authors;cover=d.cover;toast('Found: '+d.title)}
+  catch(e){toast('No match found. Enter the title and author by hand.',true)}}
+async function stopScan(){const s=scanner;scanner=null;$('#reader').innerHTML='';if(s){try{await s.stop()}catch(e){}}}
 async function scan(){
+  if(scanner)return stopScan();
   try{
     if(!window.Html5Qrcode)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';s.onload=ok;s.onerror=no;document.head.append(s)});
-    const q=new Html5Qrcode('reader');
-    await q.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:120},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13]},async t=>{await q.stop();$('#reader').innerHTML='';$('#isbn').value=t;lookup()})
-  }catch(e){alert('The camera could not start. Scanning needs HTTPS and camera permission. You can type the ISBN instead.')}}
+    scanner=new Html5Qrcode('reader');
+    await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:120},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13]},async t=>{await stopScan();navigator.vibrate?.(60);$('#isbn').value=t;lookup()})
+  }catch(e){scanner=null;$('#reader').innerHTML='';toast('The camera could not start. Scanning needs HTTPS and camera permission. You can type the ISBN instead.',true)}}
+$('#add').addEventListener('close',stopScan);
 function saveNew(){
   const v=$('#sh').value,w=v==='w';
-  if(!$('#t').value.trim())return alert('Enter a title.');
-  if(!w&&!v)return alert('Create a shelf first, or choose Wish list.');
-  api('/books',{method:'POST',body:{isbn:$('#isbn').value,title:$('#t').value,authors:$('#a').value,cover,wishlist:w?1:0,shelf_id:w?null:+v}}).then(()=>{$('#add').close();render()},fail)}
+  if(!$('#t').value.trim())return toast('Enter a title',true);
+  if(!w&&!v)return toast('Create a shelf first, or choose Wish list',true);
+  api('/books',{method:'POST',body:{isbn:$('#isbn').value,title:$('#t').value,authors:$('#a').value,cover,wishlist:w,shelf_id:w?null:+v,person_id:num($('#ap').value)}}).then(()=>{$('#add').close();toast('Added '+$('#t').value.trim());render()},fail)}
 async function edit(id){
   try{const b=await api('/books/'+id);editing=b;
-    $('#et').textContent=b.title;$('#esh').innerHTML=opts(b.wishlist?'w':b.shelf_id);
-    $('#er').value=b.rating;$('#es').value=b.spicy;$('#ev').value=b.review;
-    $('#el').value=b.ar_level??'';$('#ep').value=b.ar_points??'';$('#ex').checked=!!b.restricted;$('#ed').showModal()}
+    $('#et').textContent=b.title;$('#ea').textContent=b.authors;$('#esh').innerHTML=opts(b.wishlist?'w':b.shelf_id);$('#epp').innerHTML=personOpts(b.person_id,'Nobody in particular');
+    setRate('er',b.rating||0);setRate('es',b.spicy||0);$('#ev').value=b.review;
+    $('#el').value=b.ar_level??'';$('#ep').value=b.ar_points??'';$('#ex').checked=!!b.restricted;$('#ed').showModal();$('#ed').scrollTop=0}
   catch(e){fail(e)}}
 function saveEdit(){
-  const v=$('#esh').value,w=v==='w',n=x=>x===''?null:+x;
-  api('/books/'+editing.id,{method:'PATCH',body:{wishlist:w?1:0,shelf_id:w?null:+v,rating:+$('#er').value||0,spicy:+$('#es').value||0,review:$('#ev').value,ar_level:n($('#el').value),ar_points:n($('#ep').value),restricted:$('#ex').checked?1:0}}).then(()=>{$('#ed').close();render()},fail)}
-function del(){if(confirm('Delete this book?'))api('/books/'+editing.id,{method:'DELETE'}).then(()=>{$('#ed').close();render()},fail)}
+  const v=$('#esh').value,w=v==='w';
+  api('/books/'+editing.id,{method:'PATCH',body:{wishlist:w,shelf_id:w?null:+v,person_id:num($('#epp').value),rating:+$('#er').dataset.v||0,spicy:+$('#es').dataset.v||0,review:$('#ev').value,ar_level:num($('#el').value),ar_points:num($('#ep').value),restricted:$('#ex').checked}}).then(()=>{$('#ed').close();toast('Saved');render()},fail)}
+function del(){if(confirm('Delete this book?'))api('/books/'+editing.id,{method:'DELETE'}).then(()=>{$('#ed').close();toast('Deleted');render()},fail)}
 async function lockBtn(){
-  if(open()){tok='';localStorage.tok='';return render()}
+  if(open()){setTok('');toast('Restricted section locked');return render()}
   try{
     const {set}=await api('/pin-status');
-    const pin=prompt(set?'Enter your PIN to open the restricted section':'Choose a PIN (4 or more characters) for the restricted section');
+    const pin=await ask(set?{title:'Restricted section',label:'PIN',pin:true,ok:'Open'}:{title:'Set a PIN',label:'Choose a PIN (4 or more digits) for the restricted section',pin:true,ok:'Save'});
     if(!pin)return;
-    if(!set)await api('/pin',{method:'POST',body:{pin}});
-    tok=(await api('/unlock',{method:'POST',body:{pin}})).token;localStorage.tok=tok;render()
+    setTok((await api(set?'/unlock':'/pin',{method:'POST',body:{pin}})).token);render()
   }catch(e){fail(e)}}
 render();
 </script></body></html>
