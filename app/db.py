@@ -119,6 +119,12 @@ MIGRATIONS = [
     CREATE INDEX reads_book ON reads(book_id);
     ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT '';
     """,
+    # 11: an invitation can be to join a particular library (say, a shared classroom)
+    #     instead of starting a new one.
+    """
+    ALTER TABLE invites ADD COLUMN library_id INTEGER;
+    ALTER TABLE invites ADD COLUMN role TEXT NOT NULL DEFAULT 'member';
+    """,
 ]
 
 

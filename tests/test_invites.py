@@ -52,7 +52,7 @@ def test_inviting_by_email(c):
     token = invite(c, note="Sarah from book club")
     assert len(token) >= 20
     anyone = TestClient(c.app)
-    assert anyone.get(f"/api/invites/check?token={token}").json() == {"email": "sarah@example.com"}
+    assert anyone.get(f"/api/invites/check?token={token}").json() == {"email": "sarah@example.com", "library": None}
     assert signup(c, token).status_code == 200
     assert db.one("SELECT email FROM users WHERE username='sarah'")["email"] == "sarah@example.com"
     assert anyone.get(f"/api/invites/check?token={token}").status_code == 404  # used up

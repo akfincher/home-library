@@ -87,10 +87,16 @@ def signup(b: SignUp, request: Request, response: Response):
             uid = c.execute("INSERT INTO users(username, password, role) VALUES(?,?,'member')",
                             (username, auth.hash_password(b.password))).lastrowid
             # In the same transaction: a wrong code means no account, and a code can't be used twice.
-            invites.redeem(c, secret, uid)
+            invite = invites.redeem(c, secret, uid)
+            # Invited to join a library (say, a shared classroom): they start out in it.
+            joined = invite["library_id"] and c.execute("SELECT 1 FROM libraries WHERE id=?",
+                                                        (invite["library_id"],)).fetchone()
+            if joined:
+                c.execute("INSERT INTO memberships(library_id, user_id, role) VALUES(?,?,?)",
+                          (invite["library_id"], uid, invite["role"] or "member"))
     except sqlite3.IntegrityError:
         raise HTTPException(400, "That username is already taken.")
-    lib_id = auth.new_library(b.library.strip() or f"{username}'s Library", uid)
+    lib_id = invite["library_id"] if joined else auth.new_library(b.library.strip() or f"{username}'s Library", uid)
     token = auth.start_session(uid, lib_id)
     auth.set_cookie(response, request, token)
     return {"user": _me(token)}

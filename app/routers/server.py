@@ -2,18 +2,55 @@
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """For the server's administrator: every account on the server, and which of
 them may create invite codes."""
+import sqlite3
 import time
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .. import auth, db
+from .. import auth, context, db
+from . import invites
 
 router = APIRouter(prefix="/api/server", dependencies=[Depends(auth.require_site_admin)])
 
 
 class AccountPatch(BaseModel):
     can_invite: bool
+
+
+class NewAccount(BaseModel):
+    username: str = Field(max_length=100)
+    password: str = Field(max_length=500)
+    email: str = Field("", max_length=200)
+    own_library: bool = True  # give them a library of their own
+    join_current: bool = False  # and/or add them to the library you're working in
+    role: Literal["admin", "member"] = "member"  # their role in that library
+    can_invite: bool = False
+
+
+@router.post("/accounts")
+def add_account(b: NewAccount):
+    """Creates an account directly, without an invitation."""
+    username = auth.clean_username(b.username)
+    auth.validate_password(b.password)
+    email = b.email.strip().lower()
+    if email and not invites.EMAIL.match(email):
+        raise HTTPException(400, "That doesn't look like an email address.")
+    if email and db.one("SELECT 1 FROM users WHERE email=?", (email,)):
+        raise HTTPException(400, "Someone with that email address already has an account.")
+    if not (b.own_library or b.join_current):
+        raise HTTPException(400, "Give them their own library, or add them to this one (or both).")
+    try:
+        uid = db.run("INSERT INTO users(username, password, role, email, can_invite) VALUES(?,?,'member',?,?)",
+                     (username, auth.hash_password(b.password), email, int(b.can_invite))).lastrowid
+    except sqlite3.IntegrityError:
+        raise HTTPException(400, "That username is already taken.")
+    if b.join_current:
+        db.run("INSERT INTO memberships(library_id, user_id, role) VALUES(?,?,?)", (context.lib(), uid, b.role))
+    if b.own_library:
+        auth.new_library(f"{username}'s Library", uid)
+    return {"id": uid}
 
 
 class Notice(BaseModel):
