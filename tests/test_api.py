@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 import glob
 import sqlite3
@@ -204,4 +204,4 @@ def test_home_screen_app_files(c):
 
 def test_about_points_to_the_source(c, monkeypatch):
     about = c.get("/api/about").json()
-    assert about == {"license": "AGPL-3.0-or-later", "source": "https://github.com/akfincher/home-library"}
+    assert about == {"license": "MIT", "source": "https://github.com/akfincher/home-library"}

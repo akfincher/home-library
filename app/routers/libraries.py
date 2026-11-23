@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Your libraries: list them, switch between them, make new ones, rename, leave
 or delete them. One account can belong to several libraries (say, home and a

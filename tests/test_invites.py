@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Sign-up only through a personal invitation link, sent to an email address
 by someone allowed to invite people."""

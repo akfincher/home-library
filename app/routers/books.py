@@ -1,6 +1,8 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """The current library's books."""
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from .. import db, metadata, security
@@ -121,6 +123,71 @@ def books(shelf_id: int | None = None, wishlist: bool | None = None, person_id: 
     if not is_unlocked:
         sql += " AND b.restricted=0"
     return db.rows(sql + " ORDER BY b.title COLLATE NOCASE", args)
+
+
+def _same_work(title: str) -> str:
+    """A title reduced to what different editions share: no subtitle, leading
+    article, case or punctuation. "The Hobbit: or There and Back Again" -> "hobbit"."""
+    t = re.split(r"[:(\[]", (title or "").lower())[0]
+    t = re.sub(r"^(the|a|an)\s+", "", t.strip())
+    return re.sub(r"[^0-9a-z]+", "", t)
+
+
+def _surnames(authors: str) -> set[str]:
+    """The last word of each author's name, lower case, so "J.R.R. Tolkien" and
+    "Tolkien, J. R. R." match."""
+    out = set()
+    for a in re.split(r"[,;&]|\band\b", (authors or "").lower()):
+        words = [w for w in re.findall(r"[a-z0-9]+", a) if len(w) > 1]  # skip initials
+        if words:
+            out.add(words[-1])
+    return out
+
+
+def _isbn_forms(isbn: str) -> set[str]:
+    """The 10- and 13-digit forms of an ISBN, since a book may be saved with either."""
+    forms = {isbn, metadata.to_isbn13(isbn)}
+    if len(isbn) == 13 and isbn.startswith("978"):
+        core = isbn[3:12]
+        check = sum((10 - i) * int(c) for i, c in enumerate(core)) % 11
+        forms.add(core + ("X" if (11 - check) % 11 == 10 else str((11 - check) % 11)))
+    return forms
+
+
+@router.get("/by-isbn/{isbn}")
+def by_isbn(isbn: str, person_id: int | None = None, shared: bool = False, is_unlocked: bool = Depends(unlocked)):
+    """Searching by ISBN (typed or scanned): the books with exactly that ISBN,
+    plus other editions of the same book already in the library (same title and
+    author, different ISBN: another cover, page count or format). If no book has
+    the ISBN, its title and author are looked up online to find other editions."""
+    clean = metadata.clean_isbn(isbn)
+    if not clean:
+        raise HTTPException(400, "That doesn't look like an ISBN (10 or 13 digits).")
+    forms = _isbn_forms(clean)
+    sql, args = SELECT + " WHERE b.library_id=?", [lib()]
+    if person_id is not None:
+        sql += " AND (b.person_id=? OR b.person_id IS NULL)" if shared else " AND b.person_id=?"
+        args.append(person_id)
+    if not is_unlocked:
+        sql += " AND b.restricted=0"
+    every = db.rows(sql + " ORDER BY b.title COLLATE NOCASE", args)
+    normal = lambda v: re.sub(r"[^0-9X]", "", (v or "").upper())
+    matches = [b for b in every if normal(b["isbn"]) in forms]
+    # What the scanned book is: from a copy in the library, or else from the book-details sources.
+    found = matches[0] if matches else metadata.lookup(clean)
+    editions = []
+    if found and _same_work(found.get("title", "")):
+        work, names = _same_work(found["title"]), _surnames(found.get("authors", ""))
+        for b in every:
+            if b in matches or _same_work(b["title"]) != work:
+                continue
+            theirs = _surnames(b["authors"])
+            # Same title, and the same author when both have one.
+            if not names or not theirs or names & theirs:
+                editions.append(b)
+    book = ({k: found.get(k, "") for k in ("title", "subtitle", "authors", "cover", "published", "pages")}
+            if found else None)
+    return {"isbn": metadata.to_isbn13(clean), "book": book, "matches": matches, "editions": editions}
 
 
 @router.post("")

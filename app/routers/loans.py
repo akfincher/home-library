@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Lending books out and checking them back in. Everyone in a library can see
 what's on loan, to whom and until when."""

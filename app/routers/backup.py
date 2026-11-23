@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Export, backup and restore of the current library. These include restricted
 books, so they need the PIN once one is set. The whole-database file holds

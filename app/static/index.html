@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Home Library. Copyright (C) 2026 Aaron Fincher.
-     Licensed under the GNU AGPL, version 3 or later. See LICENSE. -->
+     Licensed under the MIT License. See LICENSE. -->
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Home Library</title>
@@ -79,9 +79,12 @@ body.gated>*:not(#gate):not(#notice){display:none!important}
 h4{margin:1.25rem 0 .25rem;font-size:1rem}
 .loan{display:inline-block;font-size:.75rem;font-weight:600;color:#fff;background:#b8860b;border-radius:99px;padding:.05rem .5rem;margin-top:.2rem}
 .loan.late{background:var(--hot)}
-#breader{border-radius:10px;transition:box-shadow .15s}
-#breader.scan-ok{box-shadow:0 0 0 5px #2e9e5b}
+#breader,#sreader{border-radius:10px;transition:box-shadow .15s}
+#breader.scan-ok,#sreader.scan-ok{box-shadow:0 0 0 5px #2e9e5b}
 #breader.scan-dup{box-shadow:0 0 0 5px var(--hot)}
+#sreader video{border-radius:10px}
+.qrow{display:flex;gap:.5rem;margin-top:.75rem}.qrow input{flex:1;min-width:0}.qrow button{white-space:nowrap}
+.ed{font-size:.8rem;color:var(--mut);margin:-.25rem 0 .5rem}
 .btnlink{display:inline-flex;align-items:center;min-height:44px;padding:.5rem .9rem;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);text-decoration:none}
 .btnlink.p{background:var(--acc);border-color:var(--acc);color:#fff}
 /* ---------- Themes (chosen in Settings; classic follows the phone's light/dark setting) ---------- */
@@ -109,6 +112,29 @@ html[data-theme=midnight]{--bg:#0c1226;--ink:#e6ebff;--mut:#9aa6cc;--card:#151d3
 html[data-theme=midnight] body{background-image:radial-gradient(1px 1px at 20px 30px,#ffffffb0,#0000),radial-gradient(1px 1px at 70px 90px,#ffffff80,#0000),radial-gradient(1.5px 1.5px at 120px 40px,#ffffffc0,#0000),radial-gradient(1px 1px at 150px 120px,#ffffff70,#0000);background-size:180px 150px}
 html[data-theme=sunshine]{--bg:#fffae3;--ink:#2d2a1f;--mut:#6a644c;--card:#fff;--wood:#ff7a59;--acc:#d9620b;--hot:#d6333a;--line:#f6dd8c;--font:ui-rounded,'SF Pro Rounded','Comic Sans MS','Chalkboard SE','Trebuchet MS',sans-serif;--head:ui-rounded,'SF Pro Rounded','Comic Sans MS','Chalkboard SE','Trebuchet MS',sans-serif;--radius:18px}
 html[data-theme=sunshine] body{background-image:radial-gradient(#ffd54a55 18%,#0000 19%),radial-gradient(#7fd1ff40 18%,#0000 19%);background-size:36px 36px;background-position:0 0,18px 18px}
+html[data-theme=autumn]{--bg:#f6ead8;--ink:#3d2414;--mut:#7d5a43;--card:#fffaf2;--wood:#8a4b25;--acc:#b5521b;--hot:#b3261e;--line:#e6cfb0;--font:Georgia,serif;--head:'Palatino Linotype',Palatino,Georgia,serif;--radius:10px}
+html[data-theme=autumn] body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='80'%3E%3Cg opacity='.2'%3E%3Cpath d='M20 6l3 7 6-3-2 7 6 1-6 4 2 5-6-2-1 7h-4l-1-7-6 2 2-5-6-4 6-1-2-7 6 3z' fill='%23d2691e'/%3E%3Cpath d='M62 46l2 5 4-2-1 5 4 1-4 3 1 3-4-1v5h-3v-5l-4 1 1-3-4-3 4-1-1-5 4 2z' fill='%23b22222'/%3E%3C/g%3E%3C/svg%3E")}
+html[data-theme=winter]{--bg:#eef5fb;--ink:#1d3247;--mut:#5b7189;--card:#fff;--wood:#8aa9c4;--acc:#2f6fa3;--hot:#c0392b;--line:#cfe0ee;--font:'Segoe UI',system-ui,sans-serif;--head:'Avenir Next',Avenir,'Segoe UI',sans-serif;--radius:12px}
+html[data-theme=winter] body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='76'%3E%3Cg stroke='%237aa7cf' stroke-width='1.4' stroke-linecap='round' opacity='.35'%3E%3Cpath d='M20 10v20M11 15l18 10M11 25l18-10'/%3E%3Cpath d='M62 50v14M56 53l12 8M56 61l12-8'/%3E%3C/g%3E%3C/svg%3E")}
+html[data-theme=retro]{--bg:#f4e3c1;--ink:#3b2a1a;--mut:#7a6142;--card:#fff6e2;--wood:#6b4f2a;--acc:#b8501a;--hot:#b3261e;--line:#e2c58f;--font:'Trebuchet MS',sans-serif;--head:'Cooper Black','Cooper Std','Bookman Old Style',Georgia,serif;--radius:16px}
+html[data-theme=retro] body{background-image:repeating-linear-gradient(0deg,#0000 0 40px,#e8a33d26 40px 46px,#d9622b22 46px 52px,#8a4b2522 52px 58px)}
+html[data-theme=arcade]{--bg:#0b0b18;--ink:#f2f0ff;--mut:#a6a3d0;--card:#15152b;--wood:#00bcd4;--acc:#d81b72;--hot:#ff6b6b;--line:#2e2a5a;--font:'Segoe UI',system-ui,sans-serif;--head:'Courier New',Courier,monospace;--radius:4px}
+html[data-theme=arcade] body{background-image:linear-gradient(#00e5ff12 1px,#0000 1px),linear-gradient(90deg,#ff2e8812 1px,#0000 1px);background-size:28px 28px}
+html[data-theme=coffee]{--bg:#efe4d6;--ink:#3a2a20;--mut:#7b6252;--card:#fbf6ef;--wood:#5b3a24;--acc:#7a4a2b;--hot:#b3261e;--line:#dccab6;--font:Georgia,serif;--head:Baskerville,'Baskerville Old Face',Georgia,serif;--radius:10px}
+html[data-theme=coffee] body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='76' height='72'%3E%3Cg fill='%237a4a2b' opacity='.13'%3E%3Cellipse cx='18' cy='18' rx='7' ry='10' transform='rotate(30 18 18)'/%3E%3Cellipse cx='56' cy='52' rx='6' ry='9' transform='rotate(-25 56 52)'/%3E%3C/g%3E%3Cg stroke='%23efe4d6' stroke-width='1.3' fill='none' opacity='.9'%3E%3Cpath d='M14 11c5 4 3 10 8 14'/%3E%3Cpath d='M53 45c4 4 2 10 6 14'/%3E%3C/g%3E%3C/svg%3E")}
+html[data-theme=lavender]{--bg:#f4f0fa;--ink:#3a2f4d;--mut:#7a6c92;--card:#fff;--wood:#a48cc9;--acc:#6f52a0;--hot:#c0392b;--line:#e1d8f0;--font:'Segoe UI',system-ui,sans-serif;--head:Georgia,serif;--radius:14px}
+html[data-theme=lavender] body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='76'%3E%3Cpath d='M20 44V14M58 70V44' stroke='%2379a86f' stroke-width='1.2' opacity='.35'/%3E%3Cg fill='%238e6bbf' opacity='.3'%3E%3Cellipse cx='20' cy='12' rx='2.2' ry='3.4'/%3E%3Cellipse cx='17.5' cy='18' rx='2.2' ry='3.4'/%3E%3Cellipse cx='22.5' cy='18' rx='2.2' ry='3.4'/%3E%3Cellipse cx='17.5' cy='24' rx='2.2' ry='3.4'/%3E%3Cellipse cx='22.5' cy='24' rx='2.2' ry='3.4'/%3E%3Cellipse cx='58' cy='42' rx='2' ry='3'/%3E%3Cellipse cx='56' cy='47' rx='2' ry='3'/%3E%3Cellipse cx='60' cy='47' rx='2' ry='3'/%3E%3C/g%3E%3C/svg%3E")}
+html[data-theme=nautical]{--bg:#f2f4f7;--ink:#0f2340;--mut:#50627d;--card:#fff;--wood:#1e3a66;--acc:#b22234;--hot:#b22234;--line:#c9d3e0;--font:'Segoe UI',system-ui,sans-serif;--head:Rockwell,'Roboto Slab','Courier New',serif;--radius:6px}
+html[data-theme=nautical] body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='56'%3E%3Cg fill='none' stroke='%231e3a66' stroke-width='1.6' stroke-linecap='round' opacity='.14'%3E%3Ccircle cx='30' cy='14' r='3'/%3E%3Cpath d='M30 17v20M23 22h14M20 31c2 7 8 8 10 8s8-1 10-8'/%3E%3C/g%3E%3C/svg%3E"),repeating-linear-gradient(0deg,#1e3a660a 0 10px,#0000 10px 30px)}
+html[data-theme=galaxy]{--bg:#120a24;--ink:#efe9ff;--mut:#b2a5d6;--card:#1d1336;--wood:#6b3fa0;--acc:#9b57f0;--hot:#ff7b9c;--line:#33255a;--font:system-ui,sans-serif;--head:Futura,'Century Gothic','Avenir Next',sans-serif;--radius:12px}
+html[data-theme=galaxy] body{background-image:radial-gradient(1px 1px at 25px 35px,#fff,#0000),radial-gradient(1.5px 1.5px at 90px 110px,#ffffffd0,#0000),radial-gradient(1px 1px at 140px 60px,#ffffffa0,#0000),radial-gradient(ellipse 60% 40% at 20% 20%,#9b57f033,#0000),radial-gradient(ellipse 50% 40% at 85% 65%,#ff6cb32a,#0000);background-size:170px 150px,170px 150px,170px 150px,100% 900px,100% 900px}
+html[data-theme=desert]{--bg:#f6e7d2;--ink:#3e2a1c;--mut:#8a6a50;--card:#fffaf1;--wood:#9c6b3f;--acc:#b0532d;--hot:#b3261e;--line:#ead2b2;--font:'Trebuchet MS',sans-serif;--head:'Palatino Linotype',Palatino,Georgia,serif;--radius:12px}
+html[data-theme=desert] body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='100'%3E%3Cpath d='M0 70 Q30 52 60 66 T120 62' fill='none' stroke='%23c2643a' stroke-width='1.4' opacity='.18'/%3E%3Cpath d='M0 90 Q40 76 80 88 T120 84' fill='none' stroke='%239c6b3f' stroke-width='1.2' opacity='.16'/%3E%3Ccircle cx='96' cy='22' r='7' fill='%23e8a33d' opacity='.18'/%3E%3Cpath d='M28 34v-14M28 26h-5v-6M28 24h5v-5' stroke='%235f8a5a' stroke-width='2.4' stroke-linecap='round' fill='none' opacity='.2'/%3E%3C/svg%3E")}
+html[data-theme=typewriter]{--bg:#f8f6f0;--ink:#1f1f1f;--mut:#5f5f5f;--card:#fffefb;--wood:#444;--acc:#2b2b2b;--hot:#b3261e;--line:#d9d6cc;--font:'Courier New',Courier,monospace;--head:'Courier New',Courier,monospace;--radius:2px}
+html[data-theme=typewriter] body{background-image:repeating-linear-gradient(#0000 0 27px,#0000000d 27px 28px)}
+html[data-theme=arcade] h1,html[data-theme=arcade] h2,html[data-theme=arcade] h3{text-transform:uppercase;letter-spacing:.05em;text-shadow:0 0 8px #d81b7266}
+html[data-theme=typewriter] h2,html[data-theme=typewriter] h3{text-decoration:underline;text-underline-offset:4px}
+html[data-theme=retro] h1,html[data-theme=retro] h2{color:#9a3f12}
 button,input,select,textarea,.item,.list>button,dialog,.note{border-radius:var(--radius)}
 .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:.6rem;margin:.75rem 0}
 .themes button{padding:0;overflow:hidden;text-align:left;min-height:0;border:2px solid var(--line)}
@@ -139,6 +165,7 @@ details.sect>summary small{font-weight:400;color:var(--mut);margin-left:auto}
 details.sect[open]{padding-bottom:.9rem}
 details.sect>.body>:first-child{margin-top:0}
 .form2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem .75rem}
+body.viewer .edit-only{display:none!important}
 .note{background:var(--bg);border-left:4px solid var(--hot);border-radius:6px;padding:.6rem .8rem;margin:.75rem 0;font-size:.9rem}
 .results>button{display:flex;gap:.75rem;align-items:center;width:100%;text-align:left;margin:.4rem 0;padding:.5rem}
 .thumb{width:44px;aspect-ratio:2/3;object-fit:cover;flex:none;border-radius:2px;background:var(--line)}
@@ -171,11 +198,14 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <img src="/static/icon-192.png" alt="" width="72" height="72">
 <h1>Home Library</h1><p id="gateMsg" class="mut"></p>
 <p id="gcw" hidden>Invitation for <b id="gEmail"></b><span id="gLib"></span></p>
-<label for="gu">Username</label><input id="gu" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required>
-<label for="gp">Password</label><input id="gp" type="password" autocomplete="current-password" required>
-<div id="gp2w" hidden><label for="gp2">Password again</label><input id="gp2" type="password" autocomplete="new-password"></div>
+<div id="guw"><label for="gu">Username</label><input id="gu" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+<div id="gpw"><label for="gp" id="gpL">Password</label><input id="gp" type="password" autocomplete="current-password"></div>
+<div id="gp2w" hidden><label for="gp2" id="gp2L">Password again</label><input id="gp2" type="password" autocomplete="new-password"></div>
+<div id="gp3w" hidden><label for="gp3">New password again</label><input id="gp3" type="password" autocomplete="new-password"></div>
+<div id="gfw" hidden><label for="gfe">Your email address</label><input id="gfe" type="email" inputmode="email" autocapitalize="off" autocomplete="email"></div>
 <div id="gplw" hidden><label for="gpl">Name your library</label><input id="gpl" placeholder="For example, Jo's Books" autocapitalize="words"></div>
 <p id="gateErr" class="note" role="alert" hidden></p>
+<p id="gateOk" class="note tip" role="status" hidden></p>
 <button class="p wide" id="gateBtn" style="margin-top:1.25rem">Log in</button>
 <p id="gateSwitch" style="text-align:center;margin-top:1.25rem" hidden></p>
 </form></div>
@@ -191,7 +221,7 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 </nav>
 <div id="warn" role="alert" hidden></div>
 <main></main>
-<button class="p fab" onclick="openAdd()">+ Add book</button>
+<button class="p fab edit-only" onclick="openAdd()">+ Add book</button>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <dialog id="add" aria-labelledby="addT"><h2 id="addT">Add book</h2>
@@ -208,6 +238,7 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 </dialog>
 
 <dialog id="ed" aria-label="Book"><div id="einfo"></div>
+<div class="edit-only">
 <div class="two"><div><label for="esh">Shelf</label><select id="esh"></select></div><div><label for="epp">Whose book</label><select id="epp"></select></div></div>
 <label for="ev">Review</label><textarea id="ev" rows="4"></textarea>
 <div class="two"><div><label for="el">AR level</label><input id="el" type="number" inputmode="decimal" step="0.1" min="0"></div><div><label for="ep">AR points</label><input id="ep" type="number" inputmode="decimal" step="0.5" min="0"></div></div>
@@ -226,7 +257,8 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <label for="dde">Description</label><textarea id="dde" rows="5"></textarea>
 <button id="dfill" onclick="fillBook()" style="margin-top:.75rem">Fill in missing details</button>
 </details>
-<div class="row acts"><button class="danger" onclick="del()">Delete</button><span style="flex:1"></span><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveEdit()">Save</button></div>
+</div>
+<div class="row acts"><button class="danger edit-only" onclick="del()">Delete</button><span style="flex:1"></span><button onclick="this.closest('dialog').close()">Close</button><button class="p edit-only" onclick="saveEdit()">Save</button></div>
 </dialog>
 
 <dialog id="sd" aria-labelledby="sdt"><h2 id="sdt">New shelf</h2>
@@ -274,6 +306,11 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <div class="row acts"><button id="udDel" class="danger" onclick="removeUser()">Remove</button><span style="flex:1"></span><button onclick="this.closest('dialog').close()">Cancel</button><button class="p" onclick="saveUser()">Save</button></div>
 </dialog>
 
+<dialog id="acct" aria-labelledby="acctT"><h2 id="acctT"></h2>
+<div id="acctBody"></div><div id="acctOut"></div>
+<div class="row acts"><button id="acctDel" class="danger" onclick="deleteAccount(acctId)">Remove account</button><span style="flex:1"></span><button onclick="this.closest('dialog').close();render()">Done</button></div>
+</dialog>
+
 <dialog id="libs" aria-labelledby="libsT"><h2 id="libsT">Your libraries</h2>
 <p class="mut">Each library has its own shelves, books and people. Switch any time without logging out.</p>
 <div id="libList" class="list"></div>
@@ -295,13 +332,14 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
 const store={get:k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
-let arranging=false,tab='shelves',shelf=null,sort='title',shelves=[],people=[],person=store.get('person'),tok=store.get('tok'),editing=null,editingShelf=null,lastQ='',scanner=null,findTimer=0,found={},results=[];
+let arranging=false,tab='shelves',shelf=null,sort='title',shelves=[],people=[],person=store.get('person'),tok=store.get('tok'),editing=null,editingShelf=null,lastQ='',scanner=null,searchScanner=null,findTimer=0,found={},results=[];
 const open=()=>tok&&+tok.split('.')[0]>Date.now()/1000;
 const setTok=t=>{tok=t;store.set('tok',t)};
 async function api(p,o={}){
   const r=await fetch('/api'+p,{method:o.method||'GET',headers:{'Content-Type':'application/json','X-Unlock':open()?tok:''},body:o.body?JSON.stringify(o.body):undefined});
   const d=await r.json().catch(()=>({}));
   if(r.status===401&&me){me=null;$('main').innerHTML='';showGate('login')}
+  if(r.status===403&&d.detail==='Choose a new password first.'){showGate('change')}
   if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'Something went wrong');
   return d}
 let toastTimer=0;
@@ -341,7 +379,9 @@ function card(b,showShelf){
   const mv=arranging?`<span class="mv"><button type="button" aria-label="Move ${esc(b.title)} left" onclick="moveCard(this,-1)">◀</button><button type="button" aria-label="Move ${esc(b.title)} right" onclick="moveCard(this,1)">▶</button></span>`:'';
   return `<div class="book" data-id="${b.id}" role="button" tabindex="0" onclick="if(!arranging)edit(${b.id})" onkeydown="if(event.key==='Enter'&&!arranging)edit(${b.id})">${mv}${img}<b>${esc(b.title)}</b>${b.restricted?' 🔒':''}<br>${esc(b.authors)}${b.series?'<br><span class="mut">'+esc(seriesText(b))+'</span>':''}${stars(b)?'<br>'+stars(b):''}${spice(b)?'<br>'+spice(b):''}${showShelf&&b.shelf?'<br><i>'+esc(b.shelf)+'</i>':''}${!person&&b.person?'<br><span class="mut">'+esc(b.person)+'</span>':''}${b.on_loan_to?`<br><span class="loan${overdue(b.loan_due)?' late':''}">On loan · ${esc(b.on_loan_to)}</span>`:''}</div>`}
 async function render(){
+  if(searchScanner)stopSearchScan();  // leaving (or redrawing) Search turns its camera off
   document.body.classList.toggle('is-arranging',arranging);
+  document.body.classList.toggle('viewer',isViewer());
   const libName=me?.library?.name||'Home Library';
   $('#libBtn').innerHTML=`${esc(libName)}<span class="caret" aria-hidden="true">▼</span>`;document.title=libName;
   if(me&&!me.library){
@@ -364,28 +404,68 @@ async function render(){
   if(tab==='shelves'&&!shelf){
     const out=await api('/loans'),late=out.filter(l=>l.overdue).length;
     const loanRow=out.length?`<div class="list"><button onclick="tab='loans';render();scrollTo(0,0)"><span>📤 On loan <small class="mut">(${out.length})</small>${late?`<span class="loan late" style="margin-left:.4rem">${late} overdue</span>`:''}</span></button></div>`:'';
-    m.innerHTML=loanRow+`<div class="row"><h2>Shelves</h2><span style="display:flex;gap:.5rem">${isOwner()?'<button onclick="openOrganize()">Organize</button>':''}<button onclick="openShelf()">New shelf</button></span></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render();scrollTo(0,0)"><span>${esc(s.name)} <small class="mut">(${s.count})</small>${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</span></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
+    const viewNote=isViewer()?'<p class="note tip">You can look around this library, but not change it.</p>':'';
+    m.innerHTML=viewNote+loanRow+`<div class="row"><h2>Shelves</h2><span class="edit-only" style="display:flex;gap:.5rem">${isOwner()?'<button onclick="openOrganize()">Organize</button>':''}<button onclick="openShelf()">New shelf</button></span></div><div class="list">${shelves.map(s=>`<button onclick="shelf=${s.id};render();scrollTo(0,0)"><span>${esc(s.name)} <small class="mut">(${s.count})</small>${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</span></button>`).join('')||'<p>No shelves yet. Create one to start adding books.</p>'}</div>`;return}
   if(tab==='shelves'){
     const s=shelves.find(x=>x.id===shelf);if(!s){shelf=null;return render()}
     const bs=sorted(await api('/books?shelf_id='+shelf+pq('&')+(person?'&shared=true':'')),s.sort);
     const head=arranging
       ?`<div class="arrbar"><button onclick="arranging=false;render()">Cancel</button><button class="p" onclick="saveOrder(${s.id})">Done</button></div><p class="note tip">Drag the books into the same order as your real shelf, left to right, then tap Done. You can also use the arrows.</p>`
-      :`<div class="row"><button onclick="shelf=null;render()">‹ Shelves</button><span style="display:flex;gap:.5rem"><select aria-label="Sort by" onchange="setShelfSort(${s.id},this.value)" style="width:auto">${SORT_NAMES.map(([v,l])=>`<option value="${v}" ${v===s.sort?'selected':''}>${l}</option>`).join('')}</select><button onclick="openShelf(${s.id})">Edit</button></span></div>`;
-    m.innerHTML=head+`<h2>${esc(s.name)}${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</h2><div class="shelf${arranging?' arranging':''}" id="shelfBooks">${bs.map(b=>card(b)).join('')||'<p>This shelf is empty. Tap Add book.</p>'}</div>${!arranging&&bs.length>1?'<button onclick="arranging=true;render()">↔ Arrange to match my shelf</button>':''}`;
+      :`<div class="row"><button onclick="shelf=null;render()">‹ Shelves</button><span class="edit-only" style="display:flex;gap:.5rem"><select aria-label="Sort by" onchange="setShelfSort(${s.id},this.value)" style="width:auto">${SORT_NAMES.map(([v,l])=>`<option value="${v}" ${v===s.sort?'selected':''}>${l}</option>`).join('')}</select><button onclick="openShelf(${s.id})">Edit</button></span></div>`;
+    m.innerHTML=head+`<h2>${esc(s.name)}${s.person?`<span class="tag">${esc(s.person)}</span>`:''}</h2><div class="shelf${arranging?' arranging':''}" id="shelfBooks">${bs.map(b=>card(b)).join('')||'<p>This shelf is empty. Tap Add book.</p>'}</div>${!arranging&&bs.length>1?'<button class="edit-only" onclick="arranging=true;render()">↔ Arrange to match my shelf</button>':''}`;
     if(arranging){scrollTo(0,0);enableDrag()}
     return}
   if(tab==='wish'){
     const bs=sorted(await api('/books?wishlist=1'+pq('&')));
     m.innerHTML=`<h2>Wish list</h2><div class="shelf">${bs.map(b=>card(b)).join('')||'<p>Nothing on the wish list yet.</p>'}</div>`;return}
   if(tab==='settings')return await renderSettings(m);
-  m.innerHTML=`<h2>Search</h2><input id="q" type="search" enterkeyhint="search" aria-label="Search your library" placeholder="Title, author, series, subject or ISBN" oninput="clearTimeout(findTimer);findTimer=setTimeout(find,250)" value="${esc(lastQ)}" style="margin-top:.75rem"><div id="res" class="shelf"></div>`;find()
+  m.innerHTML=`<h2>Search</h2><div class="qrow"><input id="q" type="search" enterkeyhint="search" aria-label="Search your library" placeholder="Title, author, series, subject or ISBN" oninput="clearTimeout(findTimer);findTimer=setTimeout(find,250)" value="${esc(lastQ)}"><button id="sscan" onclick="searchScan()" aria-label="Scan a barcode to search">📷 Scan</button></div><div id="sreader" style="margin-top:.5rem"></div><div id="res"></div>`;find()
   }catch(e){fail(e)}}
 async function find(){
   const q=$('#q');if(!q)return;lastQ=q.value.trim();
+  const isbn=isbnOf(lastQ);
+  if(isbn&&validIsbn(isbn))return findIsbn(isbn);
   try{
     const bs=lastQ?sorted(await api('/books?q='+encodeURIComponent(lastQ)+pq('&')+(person?'&shared=true':''))):[];
-    $('#res').innerHTML=bs.map(b=>card(b,1)).join('')||`<p>${lastQ?'No matches.':'Search every shelf and the wish list.'}</p>`
+    if(lastQ!==$('#q')?.value.trim())return;  // a newer search has started
+    $('#res').innerHTML=`<div class="shelf">${bs.map(b=>card(b,1)).join('')}</div>`+(bs.length?'':`<p>${lastQ?'No matches.':'Search every shelf and the wish list, or scan a book’s barcode.'}</p>`)
   }catch(e){fail(e)}}
+/* Searching by ISBN: the book with that ISBN, plus any other edition of it
+   (same title and author, different cover, page count or format) in the library. */
+const editionNote=b=>[b.isbn&&'ISBN '+b.isbn,b.pages&&b.pages+' pages',b.published&&String(b.published).slice(0,4),b.publisher].filter(Boolean).map(esc).join(' · ');
+const cardWithEdition=b=>card(b,1).replace(/<\/div>$/,`<div class="ed">${editionNote(b)}</div></div>`);
+async function findIsbn(isbn){
+  $('#res').innerHTML='<p class="mut">Looking for that ISBN…</p>';
+  try{
+    const r=await api('/books/by-isbn/'+isbn+pq('?')+(person?(pq('?')?'&':'?')+'shared=true':''));
+    if(isbnOf($('#q')?.value||'')!==isbn)return;  // a newer search has started
+    const t=r.book?`<b>${esc(r.book.title)}</b>${r.book.authors?' by '+esc(r.book.authors):''}`:`ISBN ${esc(r.isbn)}`;
+    let h='';
+    if(r.matches.length){
+      h+=`<div class="shelf">${r.matches.map(b=>cardWithEdition(b)).join('')}</div>`;
+      if(r.editions.length)h+=`<p class="note">You also have ${r.editions.length===1?'a different edition':r.editions.length+' different editions'} of this book in your library (another cover, page count or format):</p><div class="shelf">${r.editions.map(cardWithEdition).join('')}</div>`}
+    else if(r.editions.length){
+      h+=`<p class="note">This exact edition (${t}, ISBN ${esc(r.isbn)}) isn’t in your library, but ${r.editions.length===1?'a different edition is':r.editions.length+' different editions are'}:</p><div class="shelf">${r.editions.map(cardWithEdition).join('')}</div>`;
+      h+=`<button class="edit-only" onclick="addScanned('${r.isbn}')">+ Add this edition too</button>`}
+    else{
+      h+=`<p>${t} isn’t in your library${r.book?'':' (and it couldn’t be found online)'}.</p><button class="p edit-only" onclick="addScanned('${r.isbn}')">+ Add it</button>`}
+    $('#res').innerHTML=h
+  }catch(e){$('#res').innerHTML='';fail(e)}}
+function addScanned(isbn){openAdd();$('#isbn').value=isbn;lastAuto=isbn;lookup(isbn)}
+/* Scanning a barcode to search: the same chime and green flash as adding
+   books, then the camera stops and the library is searched by that ISBN. */
+
+async function stopSearchScan(){const s=searchScanner;searchScanner=null;const r=$('#sreader');if(r)r.innerHTML='';if($('#sscan'))$('#sscan').textContent='📷 Scan';if(s){try{await s.stop()}catch(e){}}}
+async function searchScan(){
+  if(searchScanner)return stopSearchScan();
+  try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume()}catch(e){}  // a tap lets the chime play
+  try{
+    await loadScanner();searchScanner=new Html5Qrcode('sreader');$('#sscan').textContent='⏹ Stop';
+    await searchScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:120},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13]},t=>{
+      const isbn=isbnOf(t);if(!isbn||!validIsbn(isbn)||!searchScanner)return;
+      navigator.vibrate?.(60);chime();const r=$('#sreader');r.classList.add('scan-ok');setTimeout(()=>r.classList.remove('scan-ok'),700);
+      setTimeout(stopSearchScan,350);$('#q').value=isbn;find()})
+  }catch(e){searchScanner=null;$('#sreader').innerHTML='';$('#sscan').textContent='📷 Scan';toast('The camera could not start. Scanning needs HTTPS and camera permission. You can type the ISBN instead.',true)}}
 
 /* Settings */
 /* Settings: three groups (your account, this library, the server), each a set of
@@ -400,69 +480,67 @@ function inviteList(list,admin){
   const old=list.some(i=>i.status==='cancelled'||i.status==='expired');
   return `<ul class="groups">${list.map(i=>`<li class="row" style="margin:0"><span style="min-width:0">${esc(i.email||'Invite code …'+i.hint)}${i.note?` <span class="mut">· ${esc(i.note)}</span>`:''}<br><span class="mut">${STATUS[i.status](i)}${i.library?` · to join “${esc(i.library)}”`:''}${admin&&i.created_by!==me.username?` · from ${esc(i.created_by)}`:''}</span></span>${i.status==='waiting'?`<button class="danger" onclick="cancelInvite(${i.id})">Cancel</button>`:`<button aria-label="Remove from the list" onclick="removeInvite(${i.id})">Remove</button>`}</li>`).join('')}</ul>${old?'<button onclick="clearInvites()">Remove all cancelled and expired</button>':''}`}
 async function renderSettings(m){
-  const owner=isOwner(),admin=!!me.site_admin,L=me.library,st0=await (await fetch('/api/auth/status')).json();
-  const [{set},src,about,members,invites,accts]=await Promise.all([api('/pin-status'),api('/sources'),api('/about'),
-    owner?api('/members'):[],me.can_invite?api('/invites'):[],admin?api('/server/accounts'):[]]);
-  accounts=members;serverAccounts=accts;
-  const libInvites=invites.filter(i=>i.library===L.name),ownInvites=invites.filter(i=>!i.library);
+  const owner=isOwner(),admin=!!me.site_admin,viewer=isViewer(),L=me.library,st0=await (await fetch('/api/auth/status')).json();
+  const [{set},src,about,invites,accts,libs,requests]=await Promise.all([api('/pin-status'),api('/sources'),api('/about'),
+    me.can_invite?api('/invites'):[],admin?api('/server/accounts'):[],admin?api('/server/libraries'):[],admin?api('/server/reset-requests'):[]]);
+  serverAccounts=accts;serverLibraries=libs;
   const waiting=invites.filter(i=>i.status==='waiting');
   const themes=`<p class="mut">Your theme is saved with your account, so it follows you to every device.</p>
   <div class="themes" role="group" aria-label="Theme">${THEMES.map(t=>`<button aria-pressed="${(me.theme||'classic')===t.id}" onclick="chooseTheme('${t.id}')"><span class="sw" style="background:${t.pat==='none'?'':t.pat.replace(/"/g,'&quot;')+','} ${t.bg}"><span style="display:block;margin:12px 10px 0;height:22px;border-radius:4px;background:${t.card};box-shadow:inset 6px 0 0 ${t.acc}"></span></span><span class="nm">${t.name}</span></button>`).join('')}</div>`;
-  const account=`<p>Logged in as <b>${esc(me.username)}</b>${admin?' <span class="tag">Server admin</span>':''}</p>
-  <div class="row wrap"><button onclick="changeMyPassword()">Change password</button><button onclick="logout()">Log out</button></div>`;
-  const invitePeople=`<p class="mut">Nobody can create an account unless they’re invited. Enter someone’s email address to make a personal sign-up link, then send it from your own email. Each link works once and expires after 14 days. They’ll get their own private library. (To bring someone into <b>${esc(L.name)}</b> instead, use Members &amp; sharing below.)</p>
-  ${inviteForm('own')}${inviteList(ownInvites,admin)}`;
-  const membersBody=`<p class="mut">Everyone who can use <b>${esc(L.name)}</b>. Members add and edit books and shelves; owners also manage members, the PIN and backups.</p>
-  ${members.map(u=>`<button class="item" style="display:flex;justify-content:space-between;width:100%;text-align:left" onclick="openUser(${u.id})"><span>${esc(u.username)}${u.id===me.id?' <span class="mut">(you)</span>':''}</span><span><span class="tag">${u.role==='admin'?'Owner':'Member'}</span>${u.person?`<span class="tag">${esc(u.person)}</span>`:''}</span></button>`).join('')}
-  <button onclick="openUser()">Add someone with an account</button>
-  ${me.can_invite?`<h4>Invite someone new to this library</h4><p class="mut">For someone without an account yet, like a fellow teacher for a classroom library. Their sign-up link brings them straight into <b>${esc(L.name)}</b>. If their email already has an account, they’re simply added.</p>${inviteForm('lib')}${inviteList(libInvites,admin)}`:''}`;
+  // Libraries an invitation can bring someone into: any (administrator) or ones you own.
+  const inviteLibs=admin?libs:me.libraries.filter(l=>l.role==='admin');
+  const iam=`<h4 style="margin-top:.25rem">You</h4><p>Logged in as <b>${esc(me.username)}</b>${me.email?` <span class="mut">· ${esc(me.email)}</span>`:''}${admin?' <span class="tag">Server admin</span>':''}</p>
+  <div class="row wrap"><button onclick="changeMyPassword()">Change password</button><button onclick="logout()">Log out</button></div>
+  ${me.can_invite?`<h4>Invite someone</h4><p class="mut">Nobody can create an account unless they’re invited. Enter their email address to make a personal sign-up link, then send it from your own email. It works once and expires after 14 days.</p>
+  <label for="invEmail">Their email address</label><input id="invEmail" type="email" inputmode="email" autocapitalize="off" autocomplete="off" placeholder="name@example.com">
+  <div class="form2"><div><label for="invNote">Name (optional)</label><input id="invNote" placeholder="Sarah" autocapitalize="words"></div>
+  <div><label for="invDest">They’ll get</label><select id="invDest" onchange="$('#invRoleW').hidden=this.value==='own'"><option value="own">Their own new library</option>${inviteLibs.map(l=>`<option value="${l.id}">Access to “${esc(l.name)}”</option>`).join('')}</select></div></div>
+  <div id="invRoleW" hidden><label for="invRole">As</label><select id="invRole"><option value="member">Member: adds and edits books</option><option value="viewer">Viewer: can look, can’t change anything</option><option value="admin">Owner: also manages it</option></select></div>
+  <button class="p" style="margin-top:.6rem" onclick="createInvite()">Invite</button><div id="newCode"></div>
+  ${inviteList(invites,admin)}`:''}
+  ${admin?`${requests.length?`<h4>Password reset requests</h4><ul class="groups">${requests.map(r=>`<li class="row" style="margin:0"><span>${esc(r.username)}<br><span class="mut">${esc(r.email)} · asked ${when(r.requested_at)}</span></span><span style="display:flex;gap:.4rem"><button class="p" onclick="resetPassword(${r.user_id})">Reset</button><button onclick="dismissRequest(${r.id})">Dismiss</button></span></li>`).join('')}</ul>`:''}
+  <h4>Create an account</h4><p class="mut">The app makes up an 8-character password for them to use once; they’ll choose their own when they first log in.</p>
+  <div class="form2"><div><label for="naU">Username</label><input id="naU" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off"></div><div><label for="naE">Email (optional)</label><input id="naE" type="email" inputmode="email" autocapitalize="off" autocomplete="off"></div></div>
+  <div class="form2"><div><label for="naDest">They’ll get</label><select id="naDest" onchange="$('#naRoleW').hidden=this.value==='own'"><option value="own">Their own new library</option>${libs.map(l=>`<option value="${l.id}">Access to “${esc(l.name)}”</option>`).join('')}</select></div>
+  <div id="naRoleW" hidden><label for="naRole">As</label><select id="naRole"><option value="member">Member</option><option value="viewer">Viewer</option><option value="admin">Owner</option></select></div></div>
+  <label class="check"><input type="checkbox" id="naInv">Can invite people</label>
+  <button class="p" onclick="createAccount()">Create account</button><div id="naOut"></div>
+  <h4>Accounts</h4>
+  ${accts.map(a=>`<button class="item" style="display:block;width:100%;text-align:left" onclick="openAcct(${a.id})"><span style="display:flex;justify-content:space-between;gap:.5rem"><b style="font-weight:600">${esc(a.username)}</b><span>${a.site_admin?'<span class="tag">Admin</span>':''}${a.wants_reset?'<span class="tag" style="color:var(--hot)">Wants a reset</span>':''}${a.must_change?'<span class="tag">New password due</span>':''}</span></span><span class="mut" style="font-size:.85rem">${a.libraries.map(l=>`${esc(l.name)} (${ROLE_NAMES[l.role]})`).join(' · ')||'No libraries'}</span></button>`).join('')}`:''}`;
   const peopleBody=`<p class="mut">The people whose books are in this library, so each can have their own shelves and wish list. Pick a person at the top to see only their books.</p>
   ${people.map(p=>`<div class="row item"><span>${esc(p.name)}</span><span style="display:flex;gap:.4rem"><button onclick="renamePerson(${p.id})">Rename</button><button class="danger" onclick="delPerson(${p.id})">Remove</button></span></div>`).join('')||'<p>No people yet.</p>'}
   <div class="row"><input id="np" placeholder="Name" aria-label="New person's name" autocapitalize="words" enterkeyhint="done" onkeydown="if(event.key==='Enter')addPerson()"><button onclick="addPerson()">Add</button></div>`;
   const pinBody=`<p class="mut">${set?'A PIN is set. Entering it opens the restricted section for a while, then it locks again.':'Set a PIN before marking any book as restricted.'} Each library has its own PIN.</p>
   ${owner?`<button onclick="changePin(${set})">${set?'Change PIN':'Set PIN'}</button>`:'<p class="mut">An owner of this library can set or change the PIN.</p>'}`;
-  const detailsBody=`<p class="mut">Books added before now, or by hand with an ISBN, can have their covers, descriptions and other blanks filled in. Nothing you typed yourself is changed.</p>
-  <button id="fillAll" onclick="fillAll()">Fill in missing details</button> <span id="fillp" class="mut" role="status"></span>`;
+  const detailsBody=`<p class="mut">When a book is added by scanning or searching, its cover, description, page count, publisher and subjects are looked up automatically. Books added some other way (typed in by hand, or before a lookup source was available) can be missing some of these. This looks up every book in this library that has an ISBN and fills in whatever is blank. Anything you typed yourself is left as it is.</p>
+  <button id="fillAll" onclick="fillAll()">Fill in what’s missing</button> <span id="fillp" class="mut" role="status"></span>`;
   const backupBody=`<p class="mut">${set?'Downloads include restricted books, so they need your PIN. ':''}Backups hold this library only. The JSON file can be restored here later, or into another library. The CSV opens in a spreadsheet.</p>
   <div class="row wrap"><button onclick="dl('/export.json')">Backup (JSON)</button><button onclick="dl('/export.csv')">Spreadsheet (CSV)</button></div>
   <label for="imp">Restore from a JSON backup</label><input type="file" id="imp" accept=".json,application/json" onchange="restore(this)">
-  <p class="mut">Restoring replaces every shelf, book and person in this library with what's in the file. Members are kept. The server keeps a copy of the current data first.</p>`;
+  <p class="mut">Restoring replaces every shelf, book and person in this library with what's in the file. Who has access is kept. The server keeps a copy of the current data first.</p>`;
   const leaveBody=`<div class="row wrap">${owner?'<button onclick="renameLibrary()">Rename library</button>':''}<button class="danger" onclick="leaveLibrary()">Leave this library</button>${owner?'<button class="danger" onclick="deleteLibrary()">Delete this library</button>':''}</div>`;
-  const accountsBody=`<p class="mut">People sign up through invitations, or you can create an account for someone here. Switch on “Can invite people” for anyone else who should be able to send invitations.</p>
-  <h4>Create an account</h4>
-  <div class="form2"><div><label for="naU">Username</label><input id="naU" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off"></div><div><label for="naP">Password</label><input id="naP" type="password" autocomplete="new-password"></div></div>
-  <label for="naE">Email (optional)</label><input id="naE" type="email" inputmode="email" autocapitalize="off" autocomplete="off">
-  <label class="check"><input type="checkbox" id="naOwn" checked>Give them a library of their own</label>
-  <label class="check"><input type="checkbox" id="naJoin">Also add them to <b style="margin-left:.25em">${esc(L.name)}</b></label>
-  <label class="check"><input type="checkbox" id="naInv">Can invite people</label>
-  <button class="p" onclick="createAccount()">Create account</button>
-  <h4>Accounts</h4>
-  ${accts.map(a=>`<div class="row item"><span>${esc(a.username)}${a.site_admin?' <span class="tag">Admin</span>':''}<br><span class="mut">${esc(a.library_names||'No library')}</span>${a.site_admin?'':`<label class="check" style="min-height:36px;font-size:.9rem"><input type="checkbox" ${a.can_invite?'checked':''} onchange="setCanInvite(${a.id},this.checked)">Can invite people</label>`}</span>${a.id===me.id?'':`<button class="danger" onclick="deleteAccount(${a.id})">Remove</button>`}</div>`).join('')}
-  ${waiting.length?`<h4>Invited, not signed up yet</h4>${inviteList(waiting,true)}`:''}`;
   const sourcesBody=`<p class="mut">Where book details come from when anyone scans or searches, in every library. Open Library is free and always on. Google Books is free too, but needs its own key to work reliably. ISBNdb is a paid service that knows more books; with a key it's asked first.</p>${src.map(sourceRow).join('')}`;
   const noticeBody=`<p class="mut">A message everyone sees at the top of the app (and on the login page), for example before an update. It disappears by itself at the time you choose.</p>
   <label for="nmsg">Message</label><textarea id="nmsg" rows="2" placeholder="The library will be updated tonight at 9 pm and offline for about 10 minutes.">${esc(st0.notice?.message||'')}</textarea>
   <label for="nuntil">Stop showing it at (optional)</label><input id="nuntil" type="datetime-local" value="${st0.notice?.until?localInput(st0.notice.until):''}">
   <div class="row wrap"><button class="p" onclick="saveNotice()">Show notice</button>${st0.notice?'<button class="danger" onclick="clearNotice()">Take it down</button>':''}</div>
   <p class="mut">Whole-server backup: <a href="#" onclick="dl('/backup.db');return false">download the database</a> (every library).</p>`;
+  const iamNote=[admin?accts.length+' account'+(accts.length===1?'':'s'):esc(me.username),waiting.length?waiting.length+' invited':'',requests.length?requests.length+' reset request'+(requests.length===1?'':'s'):''].filter(Boolean).join(' · ');
   m.innerHTML=`<h2>Settings</h2>
   <div class="sgroup">Your account</div>
   ${sect('appearance','Appearance',themes,THEMES.find(t=>t.id===(me.theme||'classic')).name)}
-  ${sect('account','Account &amp; password',account,esc(me.username))}
-  ${me.can_invite?sect('invite','Invite people',invitePeople,ownInvites.filter(i=>i.status==='waiting').length?ownInvites.filter(i=>i.status==='waiting').length+' waiting':''):''}
-  <div class="sgroup"><span>This library: ${esc(L.name)}</span>${me.libraries.length>1?'<button onclick="openLibs()">Switch</button>':''}</div>
-  ${owner?sect('members','Members &amp; sharing',membersBody,members.length+' member'+(members.length===1?'':'s')):''}
-  ${sect('people','People in this library',peopleBody,people.length?people.length+'':'')}
-  ${sect('pin','Restricted section',pinBody,set?'PIN set':'')}
-  ${sect('fill','Fill in book details',detailsBody)}
+  ${sect('iam','Identity &amp; access management',iam,iamNote)}
+  <div class="sgroup"><span>This library: ${esc(L.name)}${viewer?' (view only)':''}</span>${me.libraries.length>1?'<button onclick="openLibs()">Switch</button>':''}</div>
+  ${viewer?'':sect('people','People in this library',peopleBody,people.length?people.length+'':'')}
+  ${viewer?'':sect('pin','Restricted section',pinBody,set?'PIN set':'')}
+  ${viewer?'':sect('fill','Fill in missing covers &amp; details',detailsBody)}
   ${owner?sect('backup','Backup &amp; restore',backupBody):''}
   <details class="sect"><summary onclick="event.preventDefault();openHistory()">Change history</summary></details>
   ${sect('leave',owner?'Rename, leave or delete':'Leave this library',leaveBody)}
   ${admin?`<div class="sgroup">Server</div>
-  ${sect('accounts','Accounts &amp; invitations',accountsBody,accts.length+' account'+(accts.length===1?'':'s')+(waiting.length?` · ${waiting.length} invited`:''))}
   ${sect('sources','Book details sources &amp; keys',sourcesBody)}
   ${sect('notice','Maintenance notice',noticeBody,st0.notice?'Showing now':'')}`:''}
-  <p class="mut" style="margin-top:2rem">Home Library is free software, licensed under the GNU Affero General Public License v3. You can use, change and share it. <a href="${esc(about.source)}" target="_blank" rel="noopener">Source code</a></p>`}
+  <p class="mut" style="margin-top:2rem">Home Library is open source under the MIT License. You can use, change and share it freely. <a href="${esc(about.source)}" target="_blank" rel="noopener">Source code</a></p>`}
 const KEY_HELP={isbndb:'Get a key at isbndb.com (paid plans).',google:'Free: create an API key in Google Cloud Console and turn on the Books API for it.'};
 function sourceRow(s){
   const state=s.enabled?(s.key_source?'On, with key':'On'):'Off, needs a key';
@@ -755,9 +833,10 @@ async function edit(id,keepOpen){
   try{const b=await api('/books/'+id);editing=b;
     const tags=b.subjects?`<div class="tags">${b.subjects.split(',').map(s=>s.trim()).filter(Boolean).map(s=>`<span class="tag">${esc(s)}</span>`).join('')}</div>`:'';
     const rated=[stars(b),spice(b)].filter(Boolean).join(' · ');
-    const loan=b.on_loan_to?`<div class="note${overdue(b.loan_due)?'':' tip'}" style="margin:.5rem 0"><b>On loan to ${esc(b.on_loan_to)}</b> since ${day(b.loan_since)}${b.loan_due?` · ${overdue(b.loan_due)?'was due':'due'} ${dueText(b.loan_due)}`:''}<div class="row" style="margin:.5rem 0 0"><span></span><button class="p" onclick="returnBook()">✓ It’s back</button></div></div>`
-      :`<button onclick="openLend()" style="margin:.5rem 0">📤 Lend this book</button>`;
-    $('#einfo').innerHTML=infoHtml(b)+loan+readingBlock(b)+`<p style="margin:.25rem 0">${rated||'<span class="mut">Not rated yet</span>'} <span class="mut">· change in Edit book details</span></p>`+tags+(b.description?`<p class="desc" title="Tap to show all" onclick="this.classList.toggle('open')">${esc(b.description)}</p>`:'');
+    const loan=b.on_loan_to?`<div class="note${overdue(b.loan_due)?'':' tip'}" style="margin:.5rem 0"><b>On loan to ${esc(b.on_loan_to)}</b> since ${day(b.loan_since)}${b.loan_due?` · ${overdue(b.loan_due)?'was due':'due'} ${dueText(b.loan_due)}`:''}<div class="row" style="margin:.5rem 0 0"><span></span><button class="p edit-only" onclick="returnBook()">✓ It’s back</button></div></div>`
+      :`<button class="edit-only" onclick="openLend()" style="margin:.5rem 0">📤 Lend this book</button>`;
+    const review=b.review?`<blockquote style="margin:.5rem 0;padding:.4rem .8rem;border-left:3px solid var(--line);white-space:pre-line">${esc(b.review)}</blockquote>`:'';
+    $('#einfo').innerHTML=infoHtml(b)+loan+readingBlock(b)+review+`<p style="margin:.25rem 0">${rated||'<span class="mut">Not rated yet</span>'} <span class="mut edit-only">· change in Edit book details</span></p>`+tags+(b.description?`<p class="desc" title="Tap to show all" onclick="this.classList.toggle('open')">${esc(b.description)}</p>`:'');
     $('#esh').innerHTML=opts(b.wishlist?'w':b.shelf_id);$('#epp').innerHTML=personOpts(b.person_id,'Nobody in particular');
     $('#ev').value=b.review;
     $('#el').value=b.ar_level??'';$('#ep').value=b.ar_points??'';$('#ex').checked=!!b.restricted;
@@ -788,32 +867,65 @@ async function lockBtn(){
 /* Accounts */
 let me=null,gateMode='login',accounts=[],editingUser=null;
 const isOwner=()=>me?.library?.role==='admin';
-let signupOpen=false,serverAccounts=[],inviteToken='';
+const isViewer=()=>me?.library?.role==='viewer';
+const ROLE_NAMES={admin:'Owner',member:'Member',viewer:'Viewer'};
+let signupOpen=false,serverAccounts=[],serverLibraries=[],inviteToken='',acctId=null;
+let tempPassword='';
 function showGate(mode){
   gateMode=mode;document.querySelectorAll('dialog[open]').forEach(d=>d.close());
-  document.body.classList.add('gated');$('#gate').hidden=false;$('#gateErr').hidden=true;
-  const fresh=mode!=='login';
+  document.body.classList.add('gated');$('#gate').hidden=false;$('#gateErr').hidden=$('#gateOk').hidden=true;
+  const show=(ids)=>['gcw','guw','gpw','gp2w','gp3w','gfw','gplw'].forEach(id=>$('#'+id).hidden=!ids.includes(id));
+  show({login:['guw','gpw'],setup:['guw','gpw','gp2w'],signup:['gcw','guw','gpw','gp2w','gplw'],forgot:['gfw'],
+        change:tempPassword?['gp2w','gp3w']:['gpw','gp2w','gp3w']}[mode]);
   $('#gateMsg').textContent={setup:'Welcome! Create the first account. It owns this library and runs the server; you can add everyone else in Settings.',
     signup:'Welcome! Choose a username and password to create your account. You’ll get your own library, which only you and the people you share it with can see.',
-    login:'Log in to your library.'}[mode];
-  $('#gp').autocomplete=fresh?'new-password':'current-password';$('#gp2w').hidden=!fresh;$('#gp2').required=fresh;
-  $('#gplw').hidden=$('#gcw').hidden=mode!=='signup';
-  $('#gateBtn').textContent=fresh?'Create account':'Log in';
-  const sw=$('#gateSwitch');sw.hidden=mode!=='signup';
-  sw.innerHTML='Already have an account? <a href="#" onclick="showGate(\'login\');return false">Log in</a>';
-  $('#gu').focus()}
+    login:'Log in to your library.',
+    forgot:'Enter the email address on your account. The person who runs this library will be asked to reset your password, and will give you a new one to log in with.',
+    change:'Welcome! Please choose your own password to replace the one you were given.'}[mode];
+  $('#gpL').textContent=mode==='change'?'The password you were given':'Password';
+  $('#gp2L').textContent=mode==='change'?'New password (8 or more characters)':'Password again';
+  $('#gp').autocomplete=mode==='login'?'current-password':mode==='change'?'current-password':'new-password';
+  $('#gateBtn').textContent={login:'Log in',setup:'Create account',signup:'Create account',forgot:'Ask for a new password',change:'Save my new password'}[mode];
+  const sw=$('#gateSwitch');sw.hidden=false;
+  sw.innerHTML={login:'<a href="#" onclick="showGate(\'forgot\');return false">Forgot password?</a>',
+    signup:'Already have an account? <a href="#" onclick="showGate(\'login\');return false">Log in</a>',
+    forgot:'<a href="#" onclick="showGate(\'login\');return false">Back to log in</a>',
+    change:'<a href="#" onclick="logout();return false">Log out</a>',setup:''}[mode];
+  sw.hidden=!sw.innerHTML;
+  ({forgot:$('#gfe'),change:tempPassword?$('#gp2'):$('#gp')}[mode]||$('#gu')).focus()}
+function enterApp(){
+  ['gp','gp2','gp3','gpl','gfe'].forEach(id=>$('#'+id).value='');tempPassword='';
+  document.body.classList.remove('gated');$('#gate').hidden=true;start()}
+async function post(path,body){
+  const r=await fetch('/api/auth/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'Something went wrong');
+  return d}
 async function gateSubmit(){
-  const err=$('#gateErr'),username=$('#gu').value.trim(),password=$('#gp').value;err.hidden=true;
-  if(gateMode!=='login'&&password!==$('#gp2').value){err.textContent='The two passwords don’t match.';err.hidden=false;return}
+  const err=$('#gateErr'),ok=$('#gateOk'),bad=m=>{err.textContent=m;err.hidden=false};err.hidden=ok.hidden=true;
+  const username=$('#gu').value.trim(),password=$('#gp').value;
+  if(gateMode==='forgot'){if(!$('#gfe').value.trim())return bad('Enter your email address.')}
+  else if(gateMode==='change'){
+    if(!$('#gp2').value)return bad('Choose a new password.');
+    if($('#gp2').value!==$('#gp3').value)return bad('The two new passwords don’t match.')}
+  else{
+    if(!username||!password)return bad('Enter your username and password.');
+    if(gateMode!=='login'&&password!==$('#gp2').value)return bad('The two passwords don’t match.')}
   $('#gateBtn').disabled=true;
   try{
+    if(gateMode==='forgot'){
+      await post('forgot',{email:$('#gfe').value.trim()});
+      ok.textContent='Thanks. We found your account, and the person who runs this library has been asked to reset your password. They’ll give you a new one to log in with.';ok.hidden=false;return}
+    if(gateMode==='change'){
+      await post('password',{current:tempPassword||password,password:$('#gp2').value});
+      await refreshMe();return enterApp()}
     const body={username,password};if(gateMode==='signup'){body.library=$('#gpl').value.trim();body.token=inviteToken}
-    const r=await fetch('/api/auth/'+gateMode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const d=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(typeof d.detail==='string'?d.detail:'Something went wrong');
+    const d=await post(gateMode,body);
     if(gateMode==='signup'){inviteToken='';history.replaceState(null,'',location.pathname)}
-    me=d.user;$('#gp').value=$('#gp2').value=$('#gpl').value='';document.body.classList.remove('gated');$('#gate').hidden=true;start()
-  }catch(e){err.textContent=e.message;err.hidden=false}finally{$('#gateBtn').disabled=false}}
+    me=d.user;
+    if(me.must_change){tempPassword=password;return showGate('change')}
+    enterApp()
+  }catch(e){bad(e.message)}finally{$('#gateBtn').disabled=false}}
 async function refreshMe(){const st=await (await fetch('/api/auth/status')).json();if(!st.user)return showGate('login');me=st.user}
 function openLibs(){
   if(!me)return;
@@ -843,37 +955,61 @@ async function deleteLibrary(){
 async function setCanInvite(id,on){
   const a=serverAccounts.find(x=>x.id===id);
   try{await api('/server/accounts/'+id,{method:'PATCH',body:{can_invite:on}});toast(on?`${a.username} can now invite people`:`${a.username} can no longer invite people`)}catch(e){fail(e)}}
-function inviteForm(kind){
-  return `<label for="${kind}Email">Their email address</label><input id="${kind}Email" type="email" inputmode="email" autocapitalize="off" autocomplete="off" placeholder="name@example.com">
-  <div class="form2"><div><label for="${kind}Note">Name (optional)</label><input id="${kind}Note" placeholder="Sarah" autocapitalize="words"></div>${kind==='lib'?`<div><label for="libRole">Role</label><select id="libRole"><option value="member">Member</option><option value="admin">Owner</option></select></div>`:''}</div>
-  <button class="p" style="margin-top:.6rem" onclick="createInvite('${kind}')">${kind==='lib'?'Invite to this library':'Invite'}</button><div id="${kind}Code"></div>`}
-async function createInvite(kind){
-  const email=$('#'+kind+'Email').value.trim(),note=$('#'+kind+'Note').value.trim(),toLib=kind==='lib';
+async function createInvite(){
+  const email=$('#invEmail').value.trim(),note=$('#invNote').value.trim(),dest=$('#invDest').value;
   if(!email)return toast('Enter their email address',true);
+  const body={email,note};if(dest!=='own'){body.library_id=+dest;body.role=$('#invRole').value}
   try{
-    const r=await api('/invites',{method:'POST',body:{email,note,to_library:toLib,role:toLib?$('#libRole').value:'member'}});
-    if(r.added){toast(`${r.added} already had an account, so they were added to the library`);return render()}
+    const r=await api('/invites',{method:'POST',body});
+    if(r.added){toast(`${r.added} already had an account, so they were given access`);return render()}
     await render();
-    const box=$('#'+kind+'Code');if(!box)return;
+    const box=$('#newCode');if(!box)return;
     const link=`${location.origin}/?invite=${encodeURIComponent(r.token)}`,hi=note?`Hi ${note},\n\n`:'Hi,\n\n';
-    const what=r.library?`to share our “${r.library}” library on Home Library, so we can both keep track of its books`:'to our Home Library, where you can keep track of your books';
-    const body=`${hi}I’d like to invite you ${what}.\n\nThis link is just for you. Tap it to create your account (it works once, within 14 days):\n${link}\n\nSee you there!`;
-    const mail=`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(r.library?`Join “${r.library}” on Home Library`:'Your invitation to Home Library')}&body=${encodeURIComponent(body)}`;
-    box.innerHTML=`<div class="note tip" style="margin-top:.75rem"><b>Invitation for ${esc(note||email)}</b><p class="mut" style="margin:.25rem 0">Send this link now: for safety it can’t be shown again.</p><p style="word-break:break-all;font-size:.85rem;margin:.4rem 0">${esc(link)}</p><div class="row wrap"><a class="btnlink p" href="${esc(mail)}">✉️ Email it</a>${navigator.share?`<button onclick="navigator.share({text:this.dataset.t}).catch(()=>{})" data-t="${esc(body)}">Share…</button>`:''}<button onclick="copyText(this.dataset.t)" data-t="${esc(link)}">Copy link</button></div></div>`;
+    const what=r.library?`to our “${r.library}” library on Home Library`:'to our Home Library, where you can keep track of your books';
+    const msg=`${hi}I’d like to invite you ${what}.\n\nThis link is just for you. Tap it to create your account (it works once, within 14 days):\n${link}\n\nSee you there!`;
+    const mail=`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(r.library?`Join “${r.library}” on Home Library`:'Your invitation to Home Library')}&body=${encodeURIComponent(msg)}`;
+    box.innerHTML=`<div class="note tip" style="margin-top:.75rem"><b>Invitation for ${esc(note||email)}</b><p class="mut" style="margin:.25rem 0">Send this link now: for safety it can’t be shown again.</p><p style="word-break:break-all;font-size:.85rem;margin:.4rem 0">${esc(link)}</p><div class="row wrap"><a class="btnlink p" href="${esc(mail)}">✉️ Email it</a>${navigator.share?`<button onclick="navigator.share({text:this.dataset.t}).catch(()=>{})" data-t="${esc(msg)}">Share…</button>`:''}<button onclick="copyText(this.dataset.t)" data-t="${esc(link)}">Copy link</button></div></div>`;
     box.scrollIntoView({block:'center'})
   }catch(e){fail(e)}}
+const pwBox=(who,pw)=>`<div class="note tip" style="margin-top:.75rem"><b>Password for ${esc(who)}</b><p style="font:600 1.4rem ui-monospace,monospace;letter-spacing:.08em;margin:.4rem 0">${esc(pw)}</p><p class="mut" style="margin:.25rem 0">Give them this now: it can’t be shown again. They’ll choose their own password when they log in.</p><button onclick="copyText(this.dataset.t)" data-t="${esc(pw)}">Copy password</button></div>`;
+async function createAccount(){
+  const dest=$('#naDest').value,body={username:$('#naU').value.trim(),email:$('#naE').value.trim(),can_invite:$('#naInv').checked,
+    own_library:dest==='own',library_id:dest==='own'?null:+dest,role:$('#naRole').value};
+  if(!body.username)return toast('Give them a username',true);
+  try{const r=await api('/server/accounts',{method:'POST',body});await render();const out=$('#naOut');if(out){out.innerHTML=pwBox(body.username,r.password);out.scrollIntoView({block:'center'})}}catch(e){fail(e)}}
+async function resetPassword(uid){
+  const a=serverAccounts.find(x=>x.id===uid);
+  if(!confirm(`Give ${a.username} a new password? They’ll be logged out, and will choose their own password when they log in with it.`))return;
+  try{const r=await api('/server/accounts/'+uid+'/password',{method:'POST'});
+    if($('#acct').open){$('#acctOut').innerHTML=pwBox(r.username,r.password)}else{await render();toast('New password made');const box=document.createElement('div');box.innerHTML=pwBox(r.username,r.password);$('main').prepend(box);scrollTo(0,0)}
+  }catch(e){fail(e)}}
+async function dismissRequest(id){try{await api('/server/reset-requests/'+id,{method:'DELETE'});render()}catch(e){fail(e)}}
+/* Managing one account: email, inviting, which libraries it can use, password, removal. */
+async function openAcct(id){acctId=id;await drawAcct();$('#acctOut').innerHTML='';$('#acct').showModal()}
+async function drawAcct(){
+  serverAccounts=await api('/server/accounts');serverLibraries=await api('/server/libraries');
+  const a=serverAccounts.find(x=>x.id===acctId);if(!a)return $('#acct').close();
+  const others=serverLibraries.filter(l=>!a.libraries.some(x=>x.id===l.id));
+  $('#acctT').textContent=a.username;
+  $('#acctBody').innerHTML=`<label for="acE">Email</label><div class="row" style="margin:0"><input id="acE" type="email" inputmode="email" autocapitalize="off" value="${esc(a.email||'')}"><button onclick="saveAcctEmail()">Save</button></div>
+  ${a.site_admin?'<p class="mut">Server administrator.</p>':`<label class="check"><input type="checkbox" ${a.can_invite?'checked':''} onchange="setCanInvite(${a.id},this.checked)">Can invite people</label>`}
+  <h4>Libraries they can use</h4>
+  ${a.libraries.map(l=>`<div class="row item"><span style="min-width:0">${esc(l.name)}</span><span style="display:flex;gap:.4rem"><select aria-label="Role in ${esc(l.name)}" style="width:auto" onchange="grantAccess(${l.id},this.value)">${['admin','member','viewer'].map(r=>`<option value="${r}" ${r===l.role?'selected':''}>${ROLE_NAMES[r]}</option>`).join('')}</select><button class="danger" aria-label="Remove access to ${esc(l.name)}" onclick="revokeAccess(${l.id})">✕</button></span></div>`).join('')||'<p class="mut">None yet.</p>'}
+  ${others.length?`<div class="form2"><div><label for="acL">Give access to</label><select id="acL">${others.map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select></div><div><label for="acR">As</label><select id="acR"><option value="viewer">Viewer</option><option value="member">Member</option><option value="admin">Owner</option></select></div></div><button style="margin-top:.5rem" onclick="grantAccess(+$('#acL').value,$('#acR').value)">Give access</button>`:''}
+  <p class="mut" style="margin-top:1rem">Viewers can look at a library’s shelves and books but can’t change anything. Members add and edit books. Owners also manage the library.</p>
+  ${a.id===me.id?'':`<h4>Password</h4><button onclick="resetPassword(${a.id})">Make a new password</button>`}`;
+  $('#acctDel').hidden=a.id===me.id}
+async function saveAcctEmail(){try{await api('/server/accounts/'+acctId,{method:'PATCH',body:{email:$('#acE').value.trim()}});toast('Email saved');drawAcct()}catch(e){fail(e)}}
+async function grantAccess(lid,role){try{await api(`/server/accounts/${acctId}/libraries/${lid}`,{method:'PUT',body:{role}});toast('Access updated');drawAcct()}catch(e){fail(e);drawAcct()}}
+async function revokeAccess(lid){
+  const l=serverLibraries.find(x=>x.id===lid);if(!confirm(`Take away their access to “${l.name}”?`))return;
+  try{await api(`/server/accounts/${acctId}/libraries/${lid}`,{method:'DELETE'});toast('Access removed');drawAcct()}catch(e){fail(e)}}
 async function removeInvite(id){try{await api('/invites/'+id+'?remove=true',{method:'DELETE'});toast('Removed');render()}catch(e){fail(e)}}
 async function clearInvites(){try{const r=await api('/invites/clear',{method:'POST'});toast(`Removed ${r.removed} old invitation${r.removed===1?'':'s'}`);render()}catch(e){fail(e)}}
-async function createAccount(){
-  const body={username:$('#naU').value.trim(),password:$('#naP').value,email:$('#naE').value.trim(),own_library:$('#naOwn').checked,join_current:$('#naJoin').checked,can_invite:$('#naInv').checked};
-  if(!body.username||!body.password)return toast('Give them a username and a password',true);
-  try{await api('/server/accounts',{method:'POST',body});toast(`Created ${body.username}. Give them their username and password.`);render()}catch(e){fail(e)}}
-async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Copied')}catch(e){toast('Copy didn’t work here. Press and hold the link to copy it instead.',true)}}
-async function cancelInvite(id){if(!confirm('Cancel this invitation? Its link will stop working.'))return;try{await api('/invites/'+id,{method:'DELETE'});toast('Invite cancelled');render()}catch(e){fail(e)}}
 async function deleteAccount(id){
   const a=serverAccounts.find(x=>x.id===id);
   if(!confirm(`Delete the account ${a.username}? They’re removed from every library they’re in. Their libraries’ books stay with the other members.`))return;
-  try{await api('/server/accounts/'+id,{method:'DELETE'});toast('Account deleted');render()}catch(e){fail(e)}}
+  try{await api('/server/accounts/'+id,{method:'DELETE'});toast('Account removed');if($('#acct').open)$('#acct').close();render()}catch(e){fail(e)}}
 async function logout(){
   try{await api('/auth/logout',{method:'POST'})}catch(e){}
   me=null;setTok('');tab='shelves';shelf=null;$('main').innerHTML='';$('#gu').value='';showGate('login')}
@@ -900,7 +1036,7 @@ async function saveUser(){
 async function removeUser(){
   if(!confirm(`Remove ${editingUser.username} from this library? Their account, and any other libraries they're in, stay.`))return;
   try{await api('/members/'+editingUser.id,{method:'DELETE'});$('#ud').close();toast('Removed from the library');render()}catch(e){fail(e)}}
-const THEMES=[{id:'classic',name:'Classic',bg:'#e9eef0',card:'#fff',acc:'#0f6b6f',pat:'none'},{id:'library',name:'Library',bg:'#2a1c13',card:'#38281c',acc:'#b07a33',pat:'repeating-linear-gradient(90deg,#0000 0 9px,#0003 9px 10px)'},{id:'parchment',name:'Parchment',bg:'#f3ead4',card:'#fbf6e8',acc:'#8b3a3a',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'96\' height=\'96\'%3E%3Cg fill=\'none\' stroke=\'%238b3a3a\' stroke-width=\'1\' opacity=\'.13\'%3E%3Cpath d=\'M48 14c12 0 12 18 0 18s-12-18 0-18zM14 48c0-12 18-12 18 0s-18 12-18 0zM64 48c0-12 18-12 18 0s-18 12-18 0zM48 64c12 0 12 18 0 18s-12-18 0-18z\'/%3E%3Cpath d=\'M32 32c8 4 24 4 32 0M32 64c8-4 24-4 32 0\'/%3E%3C/g%3E%3Ccircle cx=\'48\' cy=\'48\' r=\'3\' fill=\'%238b3a3a\' opacity=\'.12\'/%3E%3C/svg%3E\")'},{id:'floral',name:'Floral',bg:'#fff4f6',card:'#fffdfd',acc:'#b8476e',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'64\' height=\'64\'%3E%3Cg fill=\'%23ef9fb8\' opacity=\'.35\'%3E%3Ccircle cx=\'15\' cy=\'9\' r=\'3.2\'/%3E%3Ccircle cx=\'21\' cy=\'15\' r=\'3.2\'/%3E%3Ccircle cx=\'15\' cy=\'21\' r=\'3.2\'/%3E%3Ccircle cx=\'9\' cy=\'15\' r=\'3.2\'/%3E%3Ccircle cx=\'48\' cy=\'44\' r=\'3\'/%3E%3Ccircle cx=\'53\' cy=\'49\' r=\'3\'/%3E%3Ccircle cx=\'48\' cy=\'54\' r=\'3\'/%3E%3Ccircle cx=\'43\' cy=\'49\' r=\'3\'/%3E%3C/g%3E%3Cg fill=\'%23f2c94c\' opacity=\'.55\'%3E%3Ccircle cx=\'15\' cy=\'15\' r=\'2.5\'/%3E%3Ccircle cx=\'48\' cy=\'49\' r=\'2\'/%3E%3C/g%3E%3C/svg%3E\")'},{id:'garden',name:'Garden',bg:'#edf3e8',card:'#fbfdf8',acc:'#3a7449',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'80\' height=\'72\'%3E%3Cg fill=\'%2379a86f\' opacity=\'.22\'%3E%3Cellipse cx=\'18\' cy=\'18\' rx=\'10\' ry=\'4\' transform=\'rotate(-35 18 18)\'/%3E%3Cellipse cx=\'58\' cy=\'52\' rx=\'10\' ry=\'4\' transform=\'rotate(30 58 52)\'/%3E%3Cellipse cx=\'60\' cy=\'14\' rx=\'6\' ry=\'2.5\' transform=\'rotate(70 60 14)\'/%3E%3C/g%3E%3Cpath d=\'M10 26 L24 12 M50 46 L66 58\' stroke=\'%2379a86f\' stroke-width=\'1\' opacity=\'.25\'/%3E%3C/svg%3E\")'},{id:'geometric',name:'Geometric',bg:'#f4f1e8',card:'#fff',acc:'#d1461f',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'48\' height=\'48\'%3E%3Cpath d=\'M0 48 L24 0 L48 48Z\' fill=\'%23e4572e\' opacity=\'.07\'/%3E%3Cpath d=\'M24 48 L36 24 L48 48Z\' fill=\'%232b59c3\' opacity=\'.09\'/%3E%3Ccircle cx=\'10\' cy=\'10\' r=\'4\' fill=\'%23f2b134\' opacity=\'.15\'/%3E%3C/svg%3E\")'},{id:'steampunk',name:'Steampunk',bg:'#1d1812',card:'#2b231a',acc:'#a8652b',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'92\' height=\'92\'%3E%3Cg fill=\'none\' stroke=\'%23c08040\' opacity=\'.16\'%3E%3Ccircle cx=\'26\' cy=\'26\' r=\'12\' stroke-width=\'2\'/%3E%3Ccircle cx=\'26\' cy=\'26\' r=\'4\' stroke-width=\'2\'/%3E%3Ccircle cx=\'26\' cy=\'26\' r=\'15\' stroke-width=\'5\' stroke-dasharray=\'4.7 4.7\'/%3E%3Ccircle cx=\'66\' cy=\'66\' r=\'8\' stroke-width=\'2\'/%3E%3Ccircle cx=\'66\' cy=\'66\' r=\'3\' stroke-width=\'2\'/%3E%3Ccircle cx=\'66\' cy=\'66\' r=\'10.5\' stroke-width=\'4\' stroke-dasharray=\'3.3 3.3\'/%3E%3C/g%3E%3C/svg%3E\")'},{id:'ocean',name:'Ocean',bg:'#e8f3f8',card:'#fbfeff',acc:'#16749a',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'80\' height=\'24\'%3E%3Cpath d=\'M0 12 Q10 2 20 12 T40 12 T60 12 T80 12\' fill=\'none\' stroke=\'%231b7fa6\' stroke-width=\'1.5\' opacity=\'.18\'/%3E%3C/svg%3E\")'},{id:'midnight',name:'Midnight',bg:'#0c1226',card:'#151d3a',acc:'#5b72e0',pat:'radial-gradient(1px 1px at 12px 14px,#fff,#0000),radial-gradient(1px 1px at 40px 30px,#fffa,#0000)'},{id:'sunshine',name:'Sunshine',bg:'#fffae3',card:'#fff',acc:'#d9620b',pat:'radial-gradient(#ffd54a77 18%,#0000 19%) 0 0/18px 18px'}];
+const THEMES=[{id:'classic',name:'Classic',bg:'#e9eef0',card:'#fff',acc:'#0f6b6f',pat:'none'},{id:'library',name:'Library',bg:'#2a1c13',card:'#38281c',acc:'#b07a33',pat:'repeating-linear-gradient(90deg,#0000 0 9px,#0003 9px 10px)'},{id:'parchment',name:'Parchment',bg:'#f3ead4',card:'#fbf6e8',acc:'#8b3a3a',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'96\' height=\'96\'%3E%3Cg fill=\'none\' stroke=\'%238b3a3a\' stroke-width=\'1\' opacity=\'.13\'%3E%3Cpath d=\'M48 14c12 0 12 18 0 18s-12-18 0-18zM14 48c0-12 18-12 18 0s-18 12-18 0zM64 48c0-12 18-12 18 0s-18 12-18 0zM48 64c12 0 12 18 0 18s-12-18 0-18z\'/%3E%3Cpath d=\'M32 32c8 4 24 4 32 0M32 64c8-4 24-4 32 0\'/%3E%3C/g%3E%3Ccircle cx=\'48\' cy=\'48\' r=\'3\' fill=\'%238b3a3a\' opacity=\'.12\'/%3E%3C/svg%3E\")'},{id:'floral',name:'Floral',bg:'#fff4f6',card:'#fffdfd',acc:'#b8476e',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'64\' height=\'64\'%3E%3Cg fill=\'%23ef9fb8\' opacity=\'.35\'%3E%3Ccircle cx=\'15\' cy=\'9\' r=\'3.2\'/%3E%3Ccircle cx=\'21\' cy=\'15\' r=\'3.2\'/%3E%3Ccircle cx=\'15\' cy=\'21\' r=\'3.2\'/%3E%3Ccircle cx=\'9\' cy=\'15\' r=\'3.2\'/%3E%3Ccircle cx=\'48\' cy=\'44\' r=\'3\'/%3E%3Ccircle cx=\'53\' cy=\'49\' r=\'3\'/%3E%3Ccircle cx=\'48\' cy=\'54\' r=\'3\'/%3E%3Ccircle cx=\'43\' cy=\'49\' r=\'3\'/%3E%3C/g%3E%3Cg fill=\'%23f2c94c\' opacity=\'.55\'%3E%3Ccircle cx=\'15\' cy=\'15\' r=\'2.5\'/%3E%3Ccircle cx=\'48\' cy=\'49\' r=\'2\'/%3E%3C/g%3E%3C/svg%3E\")'},{id:'garden',name:'Garden',bg:'#edf3e8',card:'#fbfdf8',acc:'#3a7449',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'80\' height=\'72\'%3E%3Cg fill=\'%2379a86f\' opacity=\'.22\'%3E%3Cellipse cx=\'18\' cy=\'18\' rx=\'10\' ry=\'4\' transform=\'rotate(-35 18 18)\'/%3E%3Cellipse cx=\'58\' cy=\'52\' rx=\'10\' ry=\'4\' transform=\'rotate(30 58 52)\'/%3E%3Cellipse cx=\'60\' cy=\'14\' rx=\'6\' ry=\'2.5\' transform=\'rotate(70 60 14)\'/%3E%3C/g%3E%3Cpath d=\'M10 26 L24 12 M50 46 L66 58\' stroke=\'%2379a86f\' stroke-width=\'1\' opacity=\'.25\'/%3E%3C/svg%3E\")'},{id:'geometric',name:'Geometric',bg:'#f4f1e8',card:'#fff',acc:'#d1461f',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'48\' height=\'48\'%3E%3Cpath d=\'M0 48 L24 0 L48 48Z\' fill=\'%23e4572e\' opacity=\'.07\'/%3E%3Cpath d=\'M24 48 L36 24 L48 48Z\' fill=\'%232b59c3\' opacity=\'.09\'/%3E%3Ccircle cx=\'10\' cy=\'10\' r=\'4\' fill=\'%23f2b134\' opacity=\'.15\'/%3E%3C/svg%3E\")'},{id:'steampunk',name:'Steampunk',bg:'#1d1812',card:'#2b231a',acc:'#a8652b',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'92\' height=\'92\'%3E%3Cg fill=\'none\' stroke=\'%23c08040\' opacity=\'.16\'%3E%3Ccircle cx=\'26\' cy=\'26\' r=\'12\' stroke-width=\'2\'/%3E%3Ccircle cx=\'26\' cy=\'26\' r=\'4\' stroke-width=\'2\'/%3E%3Ccircle cx=\'26\' cy=\'26\' r=\'15\' stroke-width=\'5\' stroke-dasharray=\'4.7 4.7\'/%3E%3Ccircle cx=\'66\' cy=\'66\' r=\'8\' stroke-width=\'2\'/%3E%3Ccircle cx=\'66\' cy=\'66\' r=\'3\' stroke-width=\'2\'/%3E%3Ccircle cx=\'66\' cy=\'66\' r=\'10.5\' stroke-width=\'4\' stroke-dasharray=\'3.3 3.3\'/%3E%3C/g%3E%3C/svg%3E\")'},{id:'ocean',name:'Ocean',bg:'#e8f3f8',card:'#fbfeff',acc:'#16749a',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'80\' height=\'24\'%3E%3Cpath d=\'M0 12 Q10 2 20 12 T40 12 T60 12 T80 12\' fill=\'none\' stroke=\'%231b7fa6\' stroke-width=\'1.5\' opacity=\'.18\'/%3E%3C/svg%3E\")'},{id:'midnight',name:'Midnight',bg:'#0c1226',card:'#151d3a',acc:'#5b72e0',pat:'radial-gradient(1px 1px at 12px 14px,#fff,#0000),radial-gradient(1px 1px at 40px 30px,#fffa,#0000)'},{id:'sunshine',name:'Sunshine',bg:'#fffae3',card:'#fff',acc:'#d9620b',pat:'radial-gradient(#ffd54a77 18%,#0000 19%) 0 0/18px 18px'},{id:'autumn',name:'Autumn',bg:'#f6ead8',card:'#fffaf2',acc:'#b5521b',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'84\' height=\'80\'%3E%3Cg opacity=\'.2\'%3E%3Cpath d=\'M20 6l3 7 6-3-2 7 6 1-6 4 2 5-6-2-1 7h-4l-1-7-6 2 2-5-6-4 6-1-2-7 6 3z\' fill=\'%23d2691e\'/%3E%3Cpath d=\'M62 46l2 5 4-2-1 5 4 1-4 3 1 3-4-1v5h-3v-5l-4 1 1-3-4-3 4-1-1-5 4 2z\' fill=\'%23b22222\'/%3E%3C/g%3E%3C/svg%3E\")'},{id:'winter',name:'Winter',bg:'#eef5fb',card:'#fff',acc:'#2f6fa3',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'84\' height=\'76\'%3E%3Cg stroke=\'%237aa7cf\' stroke-width=\'1.4\' stroke-linecap=\'round\' opacity=\'.35\'%3E%3Cpath d=\'M20 10v20M11 15l18 10M11 25l18-10\'/%3E%3Cpath d=\'M62 50v14M56 53l12 8M56 61l12-8\'/%3E%3C/g%3E%3C/svg%3E\")'},{id:'retro',name:'Retro ’70s',bg:'#f4e3c1',card:'#fff6e2',acc:'#b8501a',pat:'repeating-linear-gradient(0deg,#0000 0 14px,#e8a33d55 14px 17px,#d9622b44 17px 20px)'},{id:'arcade',name:'Arcade',bg:'#0b0b18',card:'#15152b',acc:'#d81b72',pat:'linear-gradient(#00e5ff40 1px,#0000 1px) 0 0/10px 10px,linear-gradient(90deg,#ff2e8840 1px,#0000 1px) 0 0/10px 10px'},{id:'coffee',name:'Coffee House',bg:'#efe4d6',card:'#fbf6ef',acc:'#7a4a2b',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'76\' height=\'72\'%3E%3Cg fill=\'%237a4a2b\' opacity=\'.13\'%3E%3Cellipse cx=\'18\' cy=\'18\' rx=\'7\' ry=\'10\' transform=\'rotate(30 18 18)\'/%3E%3Cellipse cx=\'56\' cy=\'52\' rx=\'6\' ry=\'9\' transform=\'rotate(-25 56 52)\'/%3E%3C/g%3E%3Cg stroke=\'%23efe4d6\' stroke-width=\'1.3\' fill=\'none\' opacity=\'.9\'%3E%3Cpath d=\'M14 11c5 4 3 10 8 14\'/%3E%3Cpath d=\'M53 45c4 4 2 10 6 14\'/%3E%3C/g%3E%3C/svg%3E\")'},{id:'lavender',name:'Lavender',bg:'#f4f0fa',card:'#fff',acc:'#6f52a0',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'80\' height=\'76\'%3E%3Cpath d=\'M20 44V14M58 70V44\' stroke=\'%2379a86f\' stroke-width=\'1.2\' opacity=\'.35\'/%3E%3Cg fill=\'%238e6bbf\' opacity=\'.3\'%3E%3Cellipse cx=\'20\' cy=\'12\' rx=\'2.2\' ry=\'3.4\'/%3E%3Cellipse cx=\'17.5\' cy=\'18\' rx=\'2.2\' ry=\'3.4\'/%3E%3Cellipse cx=\'22.5\' cy=\'18\' rx=\'2.2\' ry=\'3.4\'/%3E%3Cellipse cx=\'17.5\' cy=\'24\' rx=\'2.2\' ry=\'3.4\'/%3E%3Cellipse cx=\'22.5\' cy=\'24\' rx=\'2.2\' ry=\'3.4\'/%3E%3Cellipse cx=\'58\' cy=\'42\' rx=\'2\' ry=\'3\'/%3E%3Cellipse cx=\'56\' cy=\'47\' rx=\'2\' ry=\'3\'/%3E%3Cellipse cx=\'60\' cy=\'47\' rx=\'2\' ry=\'3\'/%3E%3C/g%3E%3C/svg%3E\")'},{id:'nautical',name:'Nautical',bg:'#f2f4f7',card:'#fff',acc:'#b22234',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'56\'%3E%3Cg fill=\'none\' stroke=\'%231e3a66\' stroke-width=\'1.6\' stroke-linecap=\'round\' opacity=\'.14\'%3E%3Ccircle cx=\'30\' cy=\'14\' r=\'3\'/%3E%3Cpath d=\'M30 17v20M23 22h14M20 31c2 7 8 8 10 8s8-1 10-8\'/%3E%3C/g%3E%3C/svg%3E\")'},{id:'galaxy',name:'Galaxy',bg:'#120a24',card:'#1d1336',acc:'#9b57f0',pat:'radial-gradient(ellipse 70% 60% at 30% 30%,#9b57f066,#0000),radial-gradient(ellipse 60% 50% at 80% 70%,#ff6cb355,#0000)'},{id:'desert',name:'Desert',bg:'#f6e7d2',card:'#fffaf1',acc:'#b0532d',pat:'url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'100\'%3E%3Cpath d=\'M0 70 Q30 52 60 66 T120 62\' fill=\'none\' stroke=\'%23c2643a\' stroke-width=\'1.4\' opacity=\'.18\'/%3E%3Cpath d=\'M0 90 Q40 76 80 88 T120 84\' fill=\'none\' stroke=\'%239c6b3f\' stroke-width=\'1.2\' opacity=\'.16\'/%3E%3Ccircle cx=\'96\' cy=\'22\' r=\'7\' fill=\'%23e8a33d\' opacity=\'.18\'/%3E%3Cpath d=\'M28 34v-14M28 26h-5v-6M28 24h5v-5\' stroke=\'%235f8a5a\' stroke-width=\'2.4\' stroke-linecap=\'round\' fill=\'none\' opacity=\'.2\'/%3E%3C/svg%3E\")'},{id:'typewriter',name:'Typewriter',bg:'#f8f6f0',card:'#fffefb',acc:'#2b2b2b',pat:'repeating-linear-gradient(#0000 0 9px,#0000001a 9px 10px)'}];
 function applyTheme(id){
   const t=THEMES.find(x=>x.id===id)||THEMES[0],root=document.documentElement;
   if(t.id==='classic')delete root.dataset.theme;else root.dataset.theme=t.id;
@@ -942,6 +1078,6 @@ function start(){
       showGate('login');$('#gateErr').textContent=typeof d.detail==='string'?d.detail:'That invitation link isn’t valid.';$('#gateErr').hidden=false;return}
     if(inv)history.replaceState(null,'',location.pathname);
     if(!st.user)return showGate('login');
-    me=st.user;start()
+    me=st.user;if(me.must_change)return showGate('change');start()
   }catch(e){toast('Can’t reach the library server. Check it’s running, then reload.',true)}})();
 </script></body></html>

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """SQLite access and schema migrations.
 
@@ -124,6 +124,12 @@ MIGRATIONS = [
     """
     ALTER TABLE invites ADD COLUMN library_id INTEGER;
     ALTER TABLE invites ADD COLUMN role TEXT NOT NULL DEFAULT 'member';
+    """,
+    # 12: passwords made by the app must be changed at first login; "forgot password"
+    #     requests wait for the administrator. (Libraries can now also have viewers.)
+    """
+    ALTER TABLE users ADD COLUMN must_change INTEGER NOT NULL DEFAULT 0;
+    CREATE TABLE reset_requests(id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, requested_at REAL NOT NULL);
     """,
 ]
 

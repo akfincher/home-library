@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Who belongs to the current library. Owners of the library only."""
 import sqlite3
@@ -18,12 +18,12 @@ router = APIRouter(prefix="/api/members", dependencies=[Depends(auth.require_own
 class NewMember(BaseModel):
     username: str = Field(max_length=100)
     password: str = Field("", max_length=500)  # blank: add an existing account; otherwise create one
-    role: Literal["admin", "member"] = "member"
+    role: Literal["admin", "member", "viewer"] = "member"
     person_id: int | None = None
 
 
 class MemberPatch(BaseModel):
-    role: Literal["admin", "member"] | None = None
+    role: Literal["admin", "member", "viewer"] | None = None
     person_id: int | None = None
     password: str | None = Field(None, max_length=500)
 

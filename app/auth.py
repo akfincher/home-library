@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """User accounts: password hashing, login sessions and wrong-password throttling.
 
@@ -22,7 +22,8 @@ MIN_PASSWORD = 8
 ROLES = ("admin", "member")
 # The app's looks; each account picks one (blank means the classic look).
 THEMES = ("classic", "library", "parchment", "floral", "garden", "geometric", "steampunk", "ocean", "midnight",
-          "sunshine")
+          "sunshine", "autumn", "winter", "retro", "arcade", "coffee", "lavender", "nautical", "galaxy", "desert",
+          "typewriter")
 _SCRYPT = {"n": 2 ** 14, "r": 8, "p": 1}
 
 # One limiter per username tried: 5 free wrong passwords, then a doubling wait.
@@ -88,7 +89,25 @@ def public(user: dict) -> dict:
     """What the app is told about the logged-in user."""
     return {"id": user["id"], "username": user["username"], "site_admin": bool(user["site_admin"]),
             "can_invite": bool(user["site_admin"] or user["can_invite"]), "theme": user["theme"] or "classic",
+            "must_change": bool(user["must_change"]), "email": user["email"],
             "library": user.get("library"), "libraries": user.get("libraries", [])}
+
+
+# Easy to read out or type: no 0/O, 1/l/I.
+_EASY = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def temporary_password() -> str:
+    """An 8-character password for a new or reset account; it has to be changed at the next login."""
+    return "".join(secrets.choice(_EASY) for _ in range(8))
+
+
+def set_temporary_password(user_id: int) -> str:
+    password = temporary_password()
+    db.run("UPDATE users SET password=?, must_change=1 WHERE id=?", (hash_password(password), user_id))
+    db.run("DELETE FROM reset_requests WHERE user_id=?", (user_id,))
+    end_all_sessions(user_id)
+    return password
 
 
 def new_library(name: str, owner_id: int) -> int:

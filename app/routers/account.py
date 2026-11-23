@@ -1,7 +1,8 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Logging in and out, first-time setup, signing up, and changing your own password."""
 import sqlite3
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -69,6 +70,7 @@ class SignUp(Credentials):
 
 def reset() -> None:
     invites.guesses.reset()
+    forgot_tries.reset()
 
 
 @router.post("/signup")
@@ -127,6 +129,34 @@ def change_password(b: NewPassword, request: Request, user: dict = Depends(auth.
         raise HTTPException(403, "Your current password is wrong.")
     lim.success()
     auth.validate_password(b.password)
-    db.run("UPDATE users SET password=? WHERE id=?", (auth.hash_password(b.password), user["id"]))
+    if b.password == b.current:
+        raise HTTPException(400, "Choose a password different from the one you have now.")
+    db.run("UPDATE users SET password=?, must_change=0 WHERE id=?", (auth.hash_password(b.password), user["id"]))
     auth.end_all_sessions(user["id"], except_token=request.cookies.get(auth.COOKIE))
+    return {"ok": True}
+
+
+class Forgot(BaseModel):
+    email: str = Field(max_length=200)
+
+
+# Counted across everyone: a few free tries, then a doubling wait, so the form
+# can't be used to test lots of addresses.
+forgot_tries = auth.Limiter("tries")
+
+
+@router.post("/forgot")
+def forgot(b: Forgot):
+    """Public. Checks there's an account with that email address and asks the
+    server's administrator to reset its password. It doesn't reset anything
+    itself: an email address isn't a secret, so knowing one mustn't be enough
+    to take over someone's account."""
+    forgot_tries.check()
+    user = db.one("SELECT id FROM users WHERE email=? AND email!=''", (b.email.strip().lower(),))
+    if not user:
+        forgot_tries.fail()
+        raise HTTPException(404, "No account uses that email address. Check it, or ask the person who runs this library.")
+    forgot_tries.success()
+    if not db.one("SELECT 1 FROM reset_requests WHERE user_id=?", (user["id"],)):
+        db.run("INSERT INTO reset_requests(user_id, requested_at) VALUES(?,?)", (user["id"], time.time()))
     return {"ok": True}

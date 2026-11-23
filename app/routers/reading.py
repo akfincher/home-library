@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Each person's own reading: what they're reading now (and which page they're
 on), what they've finished, what they didn't finish, and a yearly report.

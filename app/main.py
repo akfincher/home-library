@@ -1,6 +1,7 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 import os
+import re
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
@@ -15,8 +16,11 @@ from .routers import (account, backup, books, invites, libraries, loans, lookup,
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 # API paths anyone may use without logging in.
-PUBLIC_API = {"/api/auth/status", "/api/auth/login", "/api/auth/setup", "/api/auth/signup", "/api/about",
-              "/api/invites/check"}
+PUBLIC_API = {"/api/auth/status", "/api/auth/login", "/api/auth/setup", "/api/auth/signup", "/api/auth/forgot",
+              "/api/about", "/api/invites/check"}
+# Changes a viewer may still make: their own account and reading, switching or leaving libraries,
+# and server or invitation settings (which have their own permission checks).
+VIEWER_OK = re.compile(r"^/api/(auth/|libraries(/|$)|reads(/|$)|books/\d+/(start|finished)$|server(/|$)|invites(/|$)|sources/)")
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -50,6 +54,12 @@ def create_app(db_path: str | None = None) -> FastAPI:
             request.state.user = user
             context.USER.set(user)
             context.LIBRARY.set(user["library"])
+            # A password the app made (or reset) has to be replaced before anything else.
+            if user["must_change"] and not path.startswith("/api/auth/"):
+                return JSONResponse({"detail": "Choose a new password first."}, 403)
+            library = user["library"]
+            if request.method in UNSAFE and library and library["role"] == "viewer" and not VIEWER_OK.match(path):
+                return JSONResponse({"detail": "You can look at this library, but not change it."}, 403)
         return await call_next(request)
 
     for r in (account, invites, members, libraries, server, pin, people, shelves, books, loans, reading, lookup,
@@ -63,7 +73,7 @@ def create_app(db_path: str | None = None) -> FastAPI:
 
     @app.get("/api/about")
     def about():
-        return {"license": "AGPL-3.0-or-later", "source": config.SOURCE_URL}
+        return {"license": "MIT", "source": config.SOURCE_URL}
 
     @app.get("/api/changes")
     def changes(x_unlock: str | None = Header(None)):

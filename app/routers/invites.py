@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2026 Aaron Fincher. See LICENSE.
 """Invitations: the only way to sign up. The server's administrator, and the
 accounts they allow to invite people, invite someone by email address. That
@@ -77,7 +77,8 @@ class NewInvite(BaseModel):
     email: str = Field(max_length=200)
     note: str = Field("", max_length=100)  # who it's for, e.g. "Sarah"
     to_library: bool = False  # join the library you're in now, instead of starting their own
-    role: Literal["admin", "member"] = "member"  # their role there, when joining a library
+    library_id: int | None = None  # or join this library (one you own; any, for the administrator)
+    role: Literal["admin", "member", "viewer"] = "member"  # their role there, when joining a library
 
 
 @router.post("")
@@ -92,7 +93,14 @@ def create(b: NewInvite, user: dict = Depends(require_inviter)):
     if not EMAIL.match(email):
         raise HTTPException(400, "That doesn't look like an email address.")
     library = None
-    if b.to_library:
+    if b.library_id:
+        library = db.one("SELECT l.id, l.name, m.role FROM libraries l LEFT JOIN memberships m "
+                         "ON m.library_id=l.id AND m.user_id=? WHERE l.id=?", (user["id"], b.library_id))
+        if not library:
+            raise HTTPException(404, "Library not found")
+        if library["role"] != "admin" and not user["site_admin"]:
+            raise HTTPException(403, "Only an owner of that library can invite people to it.")
+    elif b.to_library:
         library = context.library()
         if library["role"] != "admin":
             raise HTTPException(403, "Only an owner of this library can invite people to it.")
